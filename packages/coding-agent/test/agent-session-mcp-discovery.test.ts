@@ -276,6 +276,48 @@ describe("AgentSession MCP discovery", () => {
 		expect(session.getActiveToolNames()).toEqual(["read", "mcp__docs_search"]);
 	});
 
+	it("preserves active local mcp__-prefixed tools when MCP bridge tools refresh", async () => {
+		const readTool = createBasicTool("read", "Read");
+		const localTool = createBasicTool("mcp__local_inline_tool", "Local");
+		const docsSearchTool = createMcpTool("mcp__docs_search", "docs", "search", "Search internal docs", ["query"]);
+		const toolRegistry = new Map([
+			[readTool.name, readTool],
+			[localTool.name, localTool],
+			[docsSearchTool.name, docsSearchTool],
+		]);
+		const agent = new Agent({
+			initialState: {
+				model: createModel(),
+				systemPrompt: ["initial"],
+				tools: [readTool, localTool],
+				messages: [],
+			},
+		});
+		const session = new AgentSession({
+			agent,
+			sessionManager: SessionManager.inMemory(),
+			settings: Settings.isolated({ "mcp.discoveryMode": true }),
+			modelRegistry: {} as never,
+			toolRegistry,
+			mcpDiscoveryEnabled: true,
+			rebuildSystemPrompt: async toolNames => ({
+				systemPrompt: [`tools:${toolNames.join(",")}`],
+			}),
+		});
+		sessions.push(session);
+
+		expect(session.getDiscoverableMCPTools().map(tool => tool.name)).toEqual(["mcp__docs_search"]);
+		expect(session.getActiveToolNames()).toEqual(["read", "mcp__local_inline_tool"]);
+
+		await session.refreshMCPTools([
+			createMcpCustomTool("mcp__docs_search", "docs", "search", "Search internal docs", ["query"]),
+		]);
+
+		expect(session.getActiveToolNames()).toEqual(["read", "mcp__local_inline_tool"]);
+		expect(session.getToolByName("mcp__local_inline_tool")).toBe(localTool);
+		expect(session.getDiscoverableMCPTools().map(tool => tool.name)).toEqual(["mcp__docs_search"]);
+	});
+
 	it("keeps MCP tools hidden by default and activates discovered selections additively", async () => {
 		const readTool = createBasicTool("read", "Read");
 		const docsSearchTool = createMcpTool("mcp__docs_search", "docs", "search", "Search internal docs", ["query"]);
