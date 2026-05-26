@@ -30,6 +30,12 @@ if (Bun.semver.order(Bun.version, MIN_BUN_VERSION) < 0) {
 process.title = APP_NAME;
 
 const commands: CommandEntry[] = [
+	{ name: "question", load: () => import("./commands/question").then(m => m.default) },
+	{ name: "state", load: () => import("./commands/state").then(m => m.default) },
+	{ name: "team", load: () => import("./commands/team").then(m => m.default) },
+	{ name: "ultragoal", load: () => import("./commands/ultragoal").then(m => m.default) },
+	{ name: "ralplan", load: () => import("./commands/ralplan").then(m => m.default) },
+	{ name: "deep-interview", load: () => import("./commands/deep-interview").then(m => m.default) },
 	{ name: "launch", load: () => import("./commands/launch").then(m => m.default) },
 	{ name: "acp", load: () => import("./commands/acp").then(m => m.default) },
 	{ name: "auth-broker", load: () => import("./commands/auth-broker").then(m => m.default) },
