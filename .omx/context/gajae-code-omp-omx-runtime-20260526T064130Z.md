@@ -1,0 +1,32 @@
+# Context Snapshot: gajae-code omp/omx minimal fork
+
+- Task statement: Build `gajae-code` as a fork/derivative of `https://github.com/can1357/oh-my-pi` (`omp`), removing all default OMP skills and MCPs, and incorporating only four tool/workflow definitions from sibling `../oh-my-codex`: `deep-interview`, `ralplan`, `ultragoal`, and `team`, plus team runtime from oh-my-codex package.
+- Desired outcome: A TypeScript-first project with Rust for performance-critical parts, preserving enough OMP agent/runtime foundation to run the chosen OMX-derived workflows/tools and team runtime.
+- Stated solution: Fork OMP, strip defaults, graft selected OMX definitions/runtime.
+- Probable intent hypothesis: Create a lean Codex/agent orchestration distribution based on OMP infrastructure but constrained to a small curated OMX workflow set.
+- Known facts/evidence:
+  - Current target directory `/Users/bellman/Documents/Workspace/gajae-code` is not a git repository and is effectively empty except `.omx/`.
+  - Cloned OMP into `.omx/tmp-oh-my-pi` for inspection; OMP root is a Bun monorepo with packages including `@oh-my-pi/pi-coding-agent`, `pi-agent-core`, `pi-ai`, `pi-natives`, `pi-tui`, `omp-stats`, and `swarm-extension`.
+  - OMP includes default `.omp/commands`, `.omp/skills`, and `.omp/rules` plus MCP/discoverable-tool code in `packages/coding-agent/src/session/agent-session.ts`.
+  - Sibling `../oh-my-codex` is an npm TypeScript package with Rust workspace crates and CLI bin `omx`, version `0.18.4` in local package metadata.
+  - `../oh-my-codex` has workflow skills for `deep-interview`, `ralplan`, `ultragoal`, and `team`, and extensive `src/team` runtime code.
+- Constraints:
+  - Use TypeScript for main implementation.
+  - Use Rust for performance-critical parts.
+  - Remove all default OMP skills and MCPs.
+  - Only incorporate the four named workflows/tools/agents definition from oh-my-codex and team runtime.
+- Unknowns/open questions:
+  - Whether `gajae-code` should keep OMP package/CLI identity (`omp`) or rebrand (`gajae`/other).
+  - Whether “remove MCPs” means no MCP subsystem at all, or no default bundled MCP servers/tools while preserving compatibility hooks.
+  - Whether “only 4 tools and agents definition” means only four user-facing skills, or also their dependency skills/agents (`plan`, `worker`, prompts, state/question/hud support) as internal hidden dependencies.
+  - Whether this pass should produce a buildable minimal scaffold, a full port, or a planning spec only.
+  - Packaging/runtime targets: npm package, Bun workspace, cargo binaries, local install, cross-platform support.
+  - Exact acceptance tests and compatibility expectations.
+- Decision-boundary unknowns:
+  - May OMX choose architecture/package names and dependency retention automatically?
+  - May OMX copy code from sibling local repo vs reimplement cleanly?
+  - May OMX delete/ignore large OMP subsystems not required for the curated workflows?
+- Likely codebase touchpoints:
+  - OMP: root workspace, `packages/coding-agent`, `packages/agent`, `packages/natives`, `.omp/*`, MCP/discoverable-tool integration.
+  - OMX: `skills/{deep-interview,ralplan,ultragoal,team}`, likely internal support skills (`plan`, `worker`), `prompts/*` agent definitions, `src/team`, `src/cli/{question,state,team,ultragoal}`, runtime/state/hud/tmux support, Rust crates for performance-critical runtime/shell pieces.
+- Prompt-safe initial-context summary status: not_needed.

@@ -1,0 +1,29 @@
+{
+  "planning_artifacts": {
+    "prd": ".omx/plans/prd-gajae-code-omp-omx-runtime.md",
+    "test_spec": ".omx/plans/test-spec-gajae-code-omp-omx-runtime.md",
+    "deep_interview_spec": ".omx/specs/deep-interview-gajae-code-omp-omx-runtime.md"
+  },
+  "ralplan_architect_review": {
+    "verdict": "APPROVE",
+    "order": 1,
+    "summary": "Approved after adding Visible Surface Gate, MCP Quarantine Gate, and local tool registry/smoke gate; PRD/test-spec must precede copy execution."
+  },
+  "ralplan_critic_review": {
+    "verdict": "APPROVE",
+    "order": 2,
+    "summary": "No blocking issues; actionable for ultragoal + team handoff; copy OMP source excluding nested .git as first execution step."
+  },
+  "ralplan_consensus_gate": {
+    "complete": true,
+    "sequence": [
+      "architect",
+      "critic"
+    ]
+  },
+  "follow_up": {
+    "default": "ultragoal",
+    "parallel": "team",
+    "first_execution_step": "copy .omx/tmp-oh-my-pi into repo root excluding .git"
+  }
+}

@@ -1,0 +1,560 @@
+/**
+ * Centralized path helpers for omp config directories.
+ *
+ * Uses PI_CONFIG_DIR (default ".omp") for the config root and
+ * PI_CODING_AGENT_DIR to override the agent directory.
+ *
+ * On Linux, if XDG_DATA_HOME / XDG_STATE_HOME / XDG_CACHE_HOME environment
+ * variables are set, paths are redirected to XDG-compliant locations under
+ * $XDG_*_HOME/omp/. This requires running `omp config migrate` first to
+ * move data to the new locations. No filesystem existence checks are performed
+ * — if the env var is set, omp trusts that the migration has been done.
+ */
+
+import * as fs from "node:fs";
+import * as os from "node:os";
+import * as path from "node:path";
+import { engines, version } from "../package.json" with { type: "json" };
+
+/** App name (e.g. "omp") */
+export const APP_NAME: string = "omp";
+
+/** Config directory name (e.g. ".omp") */
+export const CONFIG_DIR_NAME: string = ".omp";
+
+/** Version (e.g. "1.0.0") */
+export const VERSION: string = version;
+
+/** Minimum Bun version */
+export const MIN_BUN_VERSION: string = engines.bun.replace(/[^0-9.]/g, "");
+
+// =============================================================================
+// Project directory
+// =============================================================================
+
+/**
+ * On macOS, strip /private prefix only when both paths resolve to the same location.
+ * This preserves aliases like /private/tmp -> /tmp without rewriting unrelated paths.
+ */
+function standardizeMacOSPath(p: string): string {
+	if (process.platform !== "darwin" || !p.startsWith("/private/")) return p;
+	const stripped = p.slice("/private".length);
+	try {
+		if (fs.realpathSync(p) === fs.realpathSync(stripped)) {
+			return stripped;
+		}
+	} catch {}
+	return p;
+}
+
+export function resolveEquivalentPath(inputPath: string): string {
+	const resolvedPath = path.resolve(inputPath);
+	try {
+		return fs.realpathSync(resolvedPath);
+	} catch {
+		return resolvedPath;
+	}
+}
+
+export function normalizePathForComparison(inputPath: string): string {
+	const resolvedPath = resolveEquivalentPath(inputPath);
+	return process.platform === "win32" ? resolvedPath.toLowerCase() : resolvedPath;
+}
+
+export function pathIsWithin(root: string, candidate: string): boolean {
+	const normalizedRoot = normalizePathForComparison(root);
+	const normalizedCandidate = normalizePathForComparison(candidate);
+	const relative = path.relative(normalizedRoot, normalizedCandidate);
+	return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
+}
+
+export function relativePathWithinRoot(root: string, candidate: string): string | null {
+	if (!pathIsWithin(root, candidate)) return null;
+	const normalizedRoot = normalizePathForComparison(root);
+	const normalizedCandidate = normalizePathForComparison(candidate);
+	const relative = path.relative(normalizedRoot, normalizedCandidate);
+	return relative || null;
+}
+
+let projectDir = standardizeMacOSPath(process.cwd());
+
+/** Get the project directory. */
+export function getProjectDir(): string {
+	return projectDir;
+}
+
+/** Set the project directory. */
+export function setProjectDir(dir: string): void {
+	projectDir = standardizeMacOSPath(path.resolve(dir));
+	process.chdir(projectDir);
+}
+
+/** Get the config directory name relative to home (e.g. ".omp" or PI_CONFIG_DIR override). */
+export function getConfigDirName(): string {
+	return process.env.PI_CONFIG_DIR || CONFIG_DIR_NAME;
+}
+
+/** Get the config agent directory name relative to home (e.g. ".omp/agent" or PI_CONFIG_DIR + "/agent"). */
+export function getConfigAgentDirName(): string {
+	return `${getConfigDirName()}/agent`;
+}
+
+// =============================================================================
+// DirResolver — cached, XDG-aware path resolution
+// =============================================================================
+
+type XdgCategory = "data" | "state" | "cache";
+
+/**
+ * Resolves and caches all omp directory paths. On Linux, when XDG environment
+ * variables are set, paths are redirected under $XDG_*_HOME/omp/. A new
+ * instance is created whenever the agent directory changes, which naturally
+ * invalidates all cached paths.
+ */
+class DirResolver {
+	readonly configRoot: string;
+	readonly agentDir: string;
+
+	// Per-category base dirs. Without XDG, all three equal configRoot / agentDir.
+	// With XDG on Linux, they point to $XDG_*_HOME/omp/.
+	readonly #rootDirs: Record<XdgCategory, string>;
+	readonly #agentDirs: Record<XdgCategory, string>;
+
+	readonly #rootCache = new Map<string, string>();
+	readonly #agentCache = new Map<string, string>();
+
+	constructor(agentDirOverride?: string) {
+		this.configRoot = path.join(os.homedir(), getConfigDirName());
+
+		const defaultAgent = path.join(this.configRoot, "agent");
+		this.agentDir = agentDirOverride ? path.resolve(agentDirOverride) : defaultAgent;
+		const isDefault = this.agentDir === defaultAgent;
+
+		// XDG is a Linux convention. On other platforms, or for non-default
+		// profiles, all categories resolve to the legacy paths.
+		let xdgData: string | undefined;
+		let xdgState: string | undefined;
+		let xdgCache: string | undefined;
+		if ((process.platform === "linux" || process.platform === "darwin") && isDefault) {
+			const resolveIf = (envVar: string) => {
+				const value = process.env[envVar];
+				if (value) {
+					try {
+						const joined = path.join(value, APP_NAME);
+						if (fs.existsSync(joined)) {
+							return joined;
+						}
+					} catch {}
+				}
+				return undefined;
+			};
+			xdgData = resolveIf("XDG_DATA_HOME");
+			xdgState = resolveIf("XDG_STATE_HOME");
+			xdgCache = resolveIf("XDG_CACHE_HOME");
+		}
+
+		this.#rootDirs = {
+			data: xdgData ?? this.configRoot,
+			state: xdgState ?? this.configRoot,
+			cache: xdgCache ?? this.configRoot,
+		};
+		// XDG flattens the agent/ prefix: ~/.omp/agent/sessions → $XDG_DATA_HOME/omp/sessions
+		this.#agentDirs = {
+			data: xdgData ?? this.agentDir,
+			state: xdgState ?? this.agentDir,
+			cache: xdgCache ?? this.agentDir,
+		};
+	}
+
+	/** Config-root subdirectory, with optional XDG override. */
+	rootSubdir(subdir: string, xdg?: XdgCategory): string {
+		const cached = this.#rootCache.get(subdir);
+		if (cached) return cached;
+		const base = xdg ? this.#rootDirs[xdg] : this.configRoot;
+		const result = path.join(base, subdir);
+		this.#rootCache.set(subdir, result);
+		return result;
+	}
+
+	/** Agent subdirectory, with optional XDG override. */
+	agentSubdir(userAgentDir: string | undefined, subdir: string, xdg?: XdgCategory): string {
+		if (!userAgentDir || userAgentDir === this.agentDir) {
+			const cached = this.#agentCache.get(subdir);
+			if (cached) return cached;
+			const base = xdg ? this.#agentDirs[xdg] : this.agentDir;
+			const result = path.join(base, subdir);
+			this.#agentCache.set(subdir, result);
+			return result;
+		}
+		return path.join(userAgentDir, subdir);
+	}
+}
+
+let dirs = new DirResolver(process.env.PI_CODING_AGENT_DIR);
+
+// Anchor home for the resolver. Captured at module load to stay stable across
+// test mocks of `os.homedir()`. `getPluginsDir(home)` compares against this so
+// production callers (`home === RESOLVER_HOME`) hit the XDG-aware resolver while
+// tests passing a temp HOME short-circuit to a deterministic path.
+const RESOLVER_HOME = os.homedir();
+
+// =============================================================================
+// Root directories
+// =============================================================================
+
+/** Get the config root directory (~/.omp). */
+export function getConfigRootDir(): string {
+	return dirs.configRoot;
+}
+
+/** Set the coding agent directory. Creates a fresh resolver, invalidating all cached paths. */
+export function setAgentDir(dir: string): void {
+	dirs = new DirResolver(dir);
+	process.env.PI_CODING_AGENT_DIR = dir;
+}
+
+/** Get the agent config directory (~/.omp/agent). */
+export function getAgentDir(): string {
+	return dirs.agentDir;
+}
+
+/** Get the project-local config directory (.omp). */
+export function getProjectAgentDir(cwd: string = getProjectDir()): string {
+	return path.join(cwd, CONFIG_DIR_NAME);
+}
+
+// =============================================================================
+// Config-root subdirectories (~/.omp/*)
+// =============================================================================
+
+/** Get the reports directory (~/.omp/reports). */
+export function getReportsDir(): string {
+	return dirs.rootSubdir("reports", "state");
+}
+
+/** Get the logs directory (~/.omp/logs). */
+export function getLogsDir(): string {
+	return dirs.rootSubdir("logs", "state");
+}
+
+/** Get the path to a dated log file (~/.omp/logs/omp.YYYY-MM-DD.log). */
+export function getLogPath(date = new Date()): string {
+	return path.join(getLogsDir(), `${APP_NAME}.${date.toISOString().slice(0, 10)}.log`);
+}
+
+/**
+ * Get the plugins directory (~/.omp/plugins or its XDG equivalent).
+ *
+ * No-arg form (production callers) goes through the XDG-aware DirResolver so
+ * reads and writes always agree. The optional `home` parameter is for test
+ * isolation: when it differs from `os.homedir()` it short-circuits the resolver
+ * and returns `<home>/<configDir>/plugins` so tests with a temp HOME get a
+ * deterministic path. Passing `os.homedir()` explicitly is identical to the
+ * no-arg form — XDG semantics are preserved.
+ */
+export function getPluginsDir(home?: string): string {
+	if (home !== undefined && home !== RESOLVER_HOME) {
+		return path.join(home, getConfigDirName(), "plugins");
+	}
+	return dirs.rootSubdir("plugins", "data");
+}
+
+/** Where npm installs packages (~/.omp/plugins/node_modules). */
+export function getPluginsNodeModules(): string {
+	return path.join(getPluginsDir(), "node_modules");
+}
+
+/** Plugin manifest (~/.omp/plugins/package.json). */
+export function getPluginsPackageJson(): string {
+	return path.join(getPluginsDir(), "package.json");
+}
+
+/** Plugin lock file (~/.omp/plugins/omp-plugins.lock.json). */
+export function getPluginsLockfile(): string {
+	return path.join(getPluginsDir(), "omp-plugins.lock.json");
+}
+
+/** Get the remote mount directory (~/.omp/remote). */
+export function getRemoteDir(): string {
+	return dirs.rootSubdir("remote", "data");
+}
+
+/** Get the agent-managed worktrees directory (~/.omp/wt). */
+export function getWorktreesDir(): string {
+	return dirs.rootSubdir("wt", "data");
+}
+
+/** Get the SSH control socket directory (~/.omp/ssh-control). */
+export function getSshControlDir(): string {
+	return dirs.rootSubdir("ssh-control", "state");
+}
+
+/** Get the remote host info directory (~/.omp/remote-host). */
+export function getRemoteHostDir(): string {
+	return dirs.rootSubdir("remote-host", "data");
+}
+
+/** Get the managed Python venv directory (~/.omp/python-env). */
+export function getPythonEnvDir(): string {
+	return dirs.rootSubdir("python-env", "data");
+}
+
+/** Get the shared Python gateway state directory (~/.omp/agent/python-gateway; XDG default: $XDG_STATE_HOME/omp/python-gateway). */
+export function getPythonGatewayDir(): string {
+	return dirs.agentSubdir(undefined, "python-gateway", "state");
+}
+
+/** Get the puppeteer sandbox directory (~/.omp/puppeteer). */
+export function getPuppeteerDir(): string {
+	return dirs.rootSubdir("puppeteer", "cache");
+}
+
+/**
+ * Stable 7-character hex digest of an absolute filesystem path.
+ *
+ * Used to pack the project identity into a single short fs-safe segment
+ * (e.g. PR-checkout and task-isolation worktree dirs under `~/.omp/wt/`).
+ * Bun.hash is non-cryptographic — collision space is ~2^28, which is fine
+ * for naming a handful of repos on a single machine. Same input on the
+ * same Bun runtime yields the same output.
+ */
+export function hashPath(absPath: string): string {
+	return Bun.hash(path.resolve(absPath)).toString(16).padStart(16, "0").slice(-7);
+}
+
+/** Get the path to a single worktree directory (~/.omp/wt/<segment>). */
+export function getWorktreeDir(segment: string): string {
+	return path.join(getWorktreesDir(), segment);
+}
+
+/** Get the GPU cache path (~/.omp/gpu_cache.json). */
+export function getGpuCachePath(): string {
+	return dirs.rootSubdir("gpu_cache.json", "cache");
+}
+
+/**
+ * Get the GitHub view cache database path (~/.omp/cache/github-cache.db).
+ * Honors the `OMP_GITHUB_CACHE_DB` env var when set so tests can isolate the
+ * cache file without touching the rest of the config root.
+ */
+export function getGithubCacheDbPath(): string {
+	const override = process.env.OMP_GITHUB_CACHE_DB;
+	if (override) return override;
+	return dirs.rootSubdir(path.join("cache", "github-cache.db"), "cache");
+}
+
+/** Get the natives directory (~/.omp/natives). */
+export function getNativesDir(): string {
+	return dirs.rootSubdir("natives", "cache");
+}
+
+/** Get the stats database path (~/.omp/stats.db). */
+export function getStatsDbPath(): string {
+	return dirs.rootSubdir("stats.db", "data");
+}
+
+/** Get the autoresearch state directory (~/.omp/autoresearch). */
+export function getAutoresearchDir(): string {
+	return dirs.rootSubdir("autoresearch", "state");
+}
+
+/** Get the per-project autoresearch state directory (~/.omp/autoresearch/<encoded-project>). */
+export function getAutoresearchProjectDir(encodedProject: string): string {
+	return path.join(getAutoresearchDir(), encodedProject);
+}
+
+/** Get the per-project autoresearch SQLite database path (~/.omp/autoresearch/<encoded-project>.db). */
+export function getAutoresearchDbPath(encodedProject: string): string {
+	return path.join(getAutoresearchDir(), `${encodedProject}.db`);
+}
+
+/** Get the per-run artifact directory (~/.omp/autoresearch/<encoded-project>/runs/<runId>). */
+export function getAutoresearchRunDir(encodedProject: string, runId: number): string {
+	return path.join(getAutoresearchProjectDir(encodedProject), "runs", String(runId).padStart(4, "0"));
+}
+
+// =============================================================================
+// Agent subdirectories (~/.omp/agent/*)
+// =============================================================================
+
+/** Get the path to agent.db (SQLite database for settings and auth storage). */
+export function getAgentDbPath(agentDir?: string): string {
+	return dirs.agentSubdir(agentDir, "agent.db", "data");
+}
+
+/** Get the path to history.db (SQLite database for session history). */
+export function getHistoryDbPath(agentDir?: string): string {
+	return dirs.agentSubdir(agentDir, "history.db", "data");
+}
+
+/** Get the path to models.db (model cache database). */
+export function getModelDbPath(agentDir?: string): string {
+	return dirs.agentSubdir(agentDir, "models.db", "data");
+}
+
+/** Get the sessions directory (~/.omp/agent/sessions). */
+export function getSessionsDir(agentDir?: string): string {
+	return dirs.agentSubdir(agentDir, "sessions", "data");
+}
+
+/** Get the content-addressed blob store directory (~/.omp/agent/blobs). */
+export function getBlobsDir(agentDir?: string): string {
+	return dirs.agentSubdir(agentDir, "blobs", "data");
+}
+
+/** Get the custom themes directory (~/.omp/agent/themes). */
+export function getCustomThemesDir(agentDir?: string): string {
+	return dirs.agentSubdir(agentDir, "themes");
+}
+
+/** Get the tools directory (~/.omp/agent/tools). */
+export function getToolsDir(agentDir?: string): string {
+	return dirs.agentSubdir(agentDir, "tools");
+}
+
+/** Get the slash commands directory (~/.omp/agent/commands). */
+export function getCommandsDir(agentDir?: string): string {
+	return dirs.agentSubdir(agentDir, "commands");
+}
+
+/** Get the prompts directory (~/.omp/agent/prompts). */
+export function getPromptsDir(agentDir?: string): string {
+	return dirs.agentSubdir(agentDir, "prompts");
+}
+
+/** Get the user-level Python modules directory (~/.omp/agent/modules). */
+export function getAgentModulesDir(agentDir?: string): string {
+	return dirs.agentSubdir(agentDir, "modules");
+}
+
+/** Get the memories directory (~/.omp/agent/memories). */
+export function getMemoriesDir(agentDir?: string): string {
+	return dirs.agentSubdir(agentDir, "memories", "state");
+}
+
+/** Get the terminal sessions directory (~/.omp/agent/terminal-sessions). */
+export function getTerminalSessionsDir(agentDir?: string): string {
+	return dirs.agentSubdir(agentDir, "terminal-sessions", "state");
+}
+
+/** Get the crash log path (~/.omp/agent/omp-crash.log). */
+export function getCrashLogPath(agentDir?: string): string {
+	return dirs.agentSubdir(agentDir, "omp-crash.log", "state");
+}
+
+/** Get the debug log path (~/.omp/agent/omp-debug.log). */
+export function getDebugLogPath(agentDir?: string): string {
+	return dirs.agentSubdir(agentDir, `${APP_NAME}-debug.log`, "state");
+}
+
+// =============================================================================
+// Project subdirectories (.omp/*)
+// =============================================================================
+
+/** Get the project-level Python modules directory (.omp/modules). */
+export function getProjectModulesDir(cwd: string = getProjectDir()): string {
+	return path.join(getProjectAgentDir(cwd), "modules");
+}
+
+/** Get the project-level prompts directory (.omp/prompts). */
+export function getProjectPromptsDir(cwd: string = getProjectDir()): string {
+	return path.join(getProjectAgentDir(cwd), "prompts");
+}
+
+/** Get the project-level plugin overrides path (.omp/plugin-overrides.json). */
+export function getProjectPluginOverridesPath(cwd: string = getProjectDir()): string {
+	return path.join(getProjectAgentDir(cwd), "plugin-overrides.json");
+}
+
+// =============================================================================
+// MCP config paths
+// =============================================================================
+
+/** Get the primary MCP config file path (first candidate). */
+export function getMCPConfigPath(scope: "user" | "project", cwd: string = getProjectDir()): string {
+	if (scope === "user") {
+		return path.join(getAgentDir(), "mcp.json");
+	}
+	return path.join(getProjectAgentDir(cwd), "mcp.json");
+}
+
+/** Get the SSH config file path. */
+export function getSSHConfigPath(scope: "user" | "project", cwd: string = getProjectDir()): string {
+	if (scope === "user") {
+		return path.join(getAgentDir(), "ssh.json");
+	}
+	return path.join(getProjectAgentDir(cwd), "ssh.json");
+}
+
+// =============================================================================
+// Install identity
+// =============================================================================
+
+let cachedInstallId: string | null = null;
+
+const INSTALL_ID_FILE = "install-id";
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Persistent per-install UUID stored at `~/.omp/install-id`.
+ *
+ * Generated lazily on first call and persisted with `O_CREAT|O_EXCL` so
+ * concurrent first-call races don't clobber each other (loser re-reads the
+ * winner's id). Survives independently of agent state: deleting
+ * `~/.omp/agent/` does not regenerate it. Server-side dedup for grievance
+ * pushes (and similar telemetry) keys on this id.
+ */
+export function getInstallId(): string {
+	if (cachedInstallId) return cachedInstallId;
+	const filePath = path.join(getConfigRootDir(), INSTALL_ID_FILE);
+
+	let observedInvalid = false;
+	try {
+		const existing = fs.readFileSync(filePath, "utf8").trim();
+		if (UUID_RE.test(existing)) {
+			cachedInstallId = existing;
+			return existing;
+		}
+		// File present but unparseable — fall through and overwrite below.
+		observedInvalid = existing.length > 0;
+	} catch {}
+
+	const next = crypto.randomUUID();
+	try {
+		fs.mkdirSync(path.dirname(filePath), { recursive: true });
+		// If we already saw garbage in the file, unlink first so O_EXCL doesn't
+		// trip on it. Ignored if the unlink races against another writer.
+		if (observedInvalid) {
+			try {
+				fs.unlinkSync(filePath);
+			} catch {}
+		}
+		const fd = fs.openSync(filePath, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL, 0o600);
+		try {
+			fs.writeSync(fd, `${next}\n`);
+		} finally {
+			fs.closeSync(fd);
+		}
+	} catch (err) {
+		// Lost the create race — re-read whatever the winner wrote.
+		if ((err as NodeJS.ErrnoException).code === "EEXIST") {
+			try {
+				const existing = fs.readFileSync(filePath, "utf8").trim();
+				if (UUID_RE.test(existing)) {
+					cachedInstallId = existing;
+					return existing;
+				}
+			} catch {}
+		}
+		// Any other failure: keep the generated id in-memory so the rest of
+		// this process has a stable value; future processes will retry.
+	}
+
+	cachedInstallId = next;
+	return next;
+}
+
+/** Test-only: clear cached install id. Never call from production code. */
+export function __resetInstallIdCacheForTests(): void {
+	cachedInstallId = null;
+}

@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "createdAt": "2026-05-26T06:59:00.104Z",
+  "updatedAt": "2026-05-26T07:02:11.529Z",
+  "briefPath": ".omx/ultragoal/brief.md",
+  "goalsPath": ".omx/ultragoal/goals.json",
+  "ledgerPath": ".omx/ultragoal/ledger.jsonl",
+  "codexGoalMode": "aggregate",
+  "goals": [
+    {
+      "id": "G001-import-omp-source-baseline",
+      "title": "Import OMP source and establish baseline",
+      "objective": "Copy .omx/tmp-oh-my-pi into repo root including dotfiles excluding nested .git; preserve attribution/license; initialize git if needed; capture baseline build/check status.",
+      "status": "complete",
+      "attempt": 1,
+      "createdAt": "2026-05-26T06:59:21Z",
+      "updatedAt": "2026-05-26T07:02:02.593Z",
+      "startedAt": "2026-05-26T06:59:31.830Z",
+      "completedAt": "2026-05-26T07:02:02.593Z",
+      "evidence": "Copied .omx/tmp-oh-my-pi into repo root with rsync excluding nested .git; initialized git; removed temp clone to prevent Biome nested-root conflict; bun install passed; bun run check attempted and fails only baseline Rust formatting; bun run test attempted and fails baseline missing native addon/cargo-nextest. Logs in .omx/verification/g001-*.log."
+    },
+    {
+      "id": "G002-rebrand-gajae-gjc",
+      "title": "Rebrand package, CLI, TUI, and docs",
+      "objective": "Rebrand product to gajae-code and CLI to gjc across package scopes, help text, TUI labels/status, and docs; keep OMP/oh-my-pi only in attribution/history.",
+      "status": "in_progress",
+      "attempt": 1,
+      "createdAt": "2026-05-26T06:59:21Z",
+      "updatedAt": "2026-05-26T07:02:11.529Z",
+      "startedAt": "2026-05-26T07:02:11.529Z"
+    },
+    {
+      "id": "G003-visible-definitions-gate",
+      "title": "Remove OMP defaults and enforce exact visible definitions",
+      "objective": "Remove default OMP commands/skills/rules/agents; visible workflow definitions must equal deep-interview, ralplan, ultragoal, team; rewrite/internalize references to non-selected workflows.",
+      "status": "pending",
+      "attempt": 0,
+      "createdAt": "2026-05-26T06:59:21Z",
+      "updatedAt": "2026-05-26T06:59:21Z"
+    },
+    {
+      "id": "G004-inline-tools-no-mcp",
+      "title": "Preserve inline/local tools while excluding MCP",
+      "objective": "Preserve local tools such as read/write/edit/bash/search/find/AST/local artifact tools; quarantine/remove MCP dependencies/imports/commands/config/defaults/registries/metadata/docs; add positive local-tool and negative MCP tests.",
+      "status": "pending",
+      "attempt": 0,
+      "createdAt": "2026-05-26T06:59:21Z",
+      "updatedAt": "2026-05-26T06:59:21Z"
+    },
+    {
+      "id": "G005-port-four-workflows",
+      "title": "Port selected OMX workflow definitions and private support runtime",
+      "objective": "Adapt only deep-interview, ralplan, ultragoal, and team definitions; implement private support for planning/worker/review/cleanup concepts without exposing them; rebrand omx references to gjc.",
+      "status": "pending",
+      "attempt": 0,
+      "createdAt": "2026-05-26T06:59:21Z",
+      "updatedAt": "2026-05-26T06:59:21Z"
+    },
+    {
+      "id": "G006-team-runtime",
+      "title": "Integrate team runtime",
+      "objective": "Port/adapt ../oh-my-codex team runtime as gjc team with tmux lifecycle, state, mailbox, tasks, status/resume/shutdown; verify no extra worker/team definitions are visible.",
+      "status": "pending",
+      "attempt": 0,
+      "createdAt": "2026-05-26T06:59:21Z",
+      "updatedAt": "2026-05-26T06:59:21Z"
+    },
+    {
+      "id": "G007-goal-plan-interview-endpoints",
+      "title": "Integrate ultragoal, ralplan, deep-interview command endpoints",
+      "objective": "Implement gjc question/state/ultragoal/ralplan/deep-interview; verify artifact creation, state persistence, and checkpoint paths.",
+      "status": "pending",
+      "attempt": 0,
+      "createdAt": "2026-05-26T06:59:21Z",
+      "updatedAt": "2026-05-26T06:59:21Z"
+    },
+    {
+      "id": "G008-final-verification-review",
+      "title": "Full verification, cleanup, docs, and code review",
+      "objective": "Run TS/Rust build/check/test/lint gates, rebrand and MCP negative greps, local tool positive smoke tests, workflow e2e smoke tests, final cleanup, and code review approval.",
+      "status": "pending",
+      "attempt": 0,
+      "createdAt": "2026-05-26T06:59:21Z",
+      "updatedAt": "2026-05-26T06:59:21Z"
+    }
+  ],
+  "codexObjective": "Complete the durable gajae-code OMP/OMX runtime plan in .omx/ultragoal/goals.json under the approved RALPLAN constraints; use .omx/ultragoal/ledger.jsonl as audit trail.",
+  "activeGoalId": "G002-rebrand-gajae-gjc"
+}
