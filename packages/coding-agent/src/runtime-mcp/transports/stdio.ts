@@ -15,8 +15,8 @@ import type {
 	MCPRequestOptions,
 	MCPStdioServerConfig,
 	MCPTransport,
-} from "../../mcp/types";
-import { toJsonRpcError } from "../../mcp/types";
+} from "../../runtime-mcp/types";
+import { toJsonRpcError } from "../../runtime-mcp/types";
 
 /**
  * Stdio transport for MCP servers.

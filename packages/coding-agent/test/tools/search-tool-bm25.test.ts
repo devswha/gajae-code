@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { Settings } from "../../src/config/settings";
 // Back-compat import check — these re-exports from mcp/discoverable-tool-metadata should still work
-import { buildDiscoverableMCPSearchIndex, type DiscoverableMCPTool } from "../../src/mcp/discoverable-tool-metadata";
+import { buildDiscoverableMCPSearchIndex, type DiscoverableMCPTool } from "../../src/runtime-mcp/discoverable-tool-metadata";
 import type { DiscoverableMCPSearchIndex, DiscoverableTool } from "../../src/tool-discovery/tool-index";
 import type { ToolSession } from "../../src/tools/index";
 import { SearchToolBm25Tool } from "../../src/tools/search-tool-bm25";

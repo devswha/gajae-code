@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "bun:test";
 import { hookFetch } from "../../utils/src/hook-fetch";
-import { MCPOAuthFlow } from "../src/mcp/oauth-flow";
+import { MCPOAuthFlow } from "../src/runtime-mcp/oauth-flow";
 
 const originalFetch = global.fetch;
 

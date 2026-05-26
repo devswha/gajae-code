@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { InternalUrlRouter } from "../../src/internal-urls";
-import { MCPManager } from "../../src/mcp/manager";
-import type { MCPResource, MCPResourceReadResult, MCPResourceTemplate } from "../../src/mcp/types";
+import { MCPManager } from "../../src/runtime-mcp/manager";
+import type { MCPResource, MCPResourceReadResult, MCPResourceTemplate } from "../../src/runtime-mcp/types";
 
 function createMockManager(opts: {
 	servers?: string[];

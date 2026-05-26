@@ -149,7 +149,7 @@ import {
 	isMCPBridgeTool,
 	isMCPToolName,
 	selectDiscoverableMCPToolNamesByServer,
-} from "../mcp/discoverable-tool-metadata";
+} from "../runtime-mcp/discoverable-tool-metadata";
 import { resolveMemoryBackend } from "../memory-backend";
 import { getCurrentThemeName, theme } from "../modes/theme/theme";
 import type { PlanModeState } from "../plan-mode/state";

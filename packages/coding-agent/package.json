@@ -354,22 +354,6 @@
 			"types": "./src/lsp/clients/*.ts",
 			"import": "./src/lsp/clients/*.ts"
 		},
-		"./mcp": {
-			"types": "./src/mcp/index.ts",
-			"import": "./src/mcp/index.ts"
-		},
-		"./mcp/*": {
-			"types": "./src/mcp/*.ts",
-			"import": "./src/mcp/*.ts"
-		},
-		"./mcp/transports": {
-			"types": "./src/mcp/transports/index.ts",
-			"import": "./src/mcp/transports/index.ts"
-		},
-		"./mcp/transports/*": {
-			"types": "./src/mcp/transports/*.ts",
-			"import": "./src/mcp/transports/*.ts"
-		},
 		"./memories": {
 			"types": "./src/memories/index.ts",
 			"import": "./src/memories/index.ts"

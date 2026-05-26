@@ -23,7 +23,7 @@ import { ToolError } from "./tool-errors";
 export type {
 	DiscoverableMCPSearchIndex,
 	DiscoverableMCPTool,
-} from "../mcp/discoverable-tool-metadata";
+} from "../runtime-mcp/discoverable-tool-metadata";
 
 const DEFAULT_LIMIT = 8;
 const TOOL_DISCOVERY_TITLE = "Tool Discovery";

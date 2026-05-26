@@ -328,13 +328,13 @@ describe("BM25 search", () => {
 
 describe("back-compat MCP functions via mcp/discoverable-tool-metadata", () => {
 	it("isMCPToolName still works", async () => {
-		const { isMCPToolName: legacyIsMCPToolName } = await import("../../src/mcp/discoverable-tool-metadata");
+		const { isMCPToolName: legacyIsMCPToolName } = await import("../../src/runtime-mcp/discoverable-tool-metadata");
 		expect(legacyIsMCPToolName("mcp__foo")).toBe(true);
 		expect(legacyIsMCPToolName("read")).toBe(false);
 	});
 
 	it("collectDiscoverableMCPTools still works", async () => {
-		const { collectDiscoverableMCPTools } = await import("../../src/mcp/discoverable-tool-metadata");
+		const { collectDiscoverableMCPTools } = await import("../../src/runtime-mcp/discoverable-tool-metadata");
 		const tools = [
 			mcpAgentTool("mcp__gh_search", "github", "search", "Search repos", ["query"]),
 			makeAgentTool("read"), // non-MCP — should be filtered out
@@ -347,7 +347,7 @@ describe("back-compat MCP functions via mcp/discoverable-tool-metadata", () => {
 
 	it("buildDiscoverableMCPSearchIndex still works and is searchable", async () => {
 		const { buildDiscoverableMCPSearchIndex, searchDiscoverableMCPTools } = await import(
-			"../../src/mcp/discoverable-tool-metadata"
+			"../../src/runtime-mcp/discoverable-tool-metadata"
 		);
 		const legacyTools = [
 			{

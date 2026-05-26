@@ -14,8 +14,8 @@ import type {
 	MCPRequestOptions,
 	MCPSseServerConfig,
 	MCPTransport,
-} from "../../mcp/types";
-import { toJsonRpcError } from "../../mcp/types";
+} from "../../runtime-mcp/types";
+import { toJsonRpcError } from "../../runtime-mcp/types";
 
 /**
  * HTTP transport for MCP servers.

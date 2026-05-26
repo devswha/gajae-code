@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
-import type { MCPReconnect } from "../src/mcp/tool-bridge";
-import { DeferredMCPTool, isRetriableConnectionError, MCPTool } from "../src/mcp/tool-bridge";
-import type { MCPServerConnection, MCPToolCallResult, MCPTransport } from "../src/mcp/types";
+import type { MCPReconnect } from "../src/runtime-mcp/tool-bridge";
+import { DeferredMCPTool, isRetriableConnectionError, MCPTool } from "../src/runtime-mcp/tool-bridge";
+import type { MCPServerConnection, MCPToolCallResult, MCPTransport } from "../src/runtime-mcp/types";
 import { ToolAbortError } from "../src/tools/tool-errors";
 
 // ---------------------------------------------------------------------------

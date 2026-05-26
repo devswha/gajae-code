@@ -7,8 +7,8 @@ import * as path from "node:path";
 import { Spacer, Text } from "@gajae-code/tui";
 import { getMCPConfigPath, getProjectDir } from "@gajae-code/utils";
 import type { SourceMeta } from "../../capability/types";
-import { analyzeAuthError, discoverOAuthEndpoints, MCPManager } from "../../mcp";
-import { connectToServer, disconnectServer, listTools } from "../../mcp/client";
+import { analyzeAuthError, discoverOAuthEndpoints, MCPManager } from "../../runtime-mcp";
+import { connectToServer, disconnectServer, listTools } from "../../runtime-mcp/client";
 import {
 	addMCPServer,
 	readDisabledServers,
@@ -16,8 +16,8 @@ import {
 	removeMCPServer,
 	setServerDisabled,
 	updateMCPServer,
-} from "../../mcp/config-writer";
-import { MCPOAuthFlow } from "../../mcp/oauth-flow";
+} from "../../runtime-mcp/config-writer";
+import { MCPOAuthFlow } from "../../runtime-mcp/oauth-flow";
 import {
 	clearSmitheryApiKey,
 	createSmitheryCliAuthSession,
@@ -25,19 +25,19 @@ import {
 	getSmitheryLoginUrl,
 	pollSmitheryCliAuthSession,
 	saveSmitheryApiKey,
-} from "../../mcp/smithery-auth";
-import { SmitheryConnectError } from "../../mcp/smithery-connect";
+} from "../../runtime-mcp/smithery-auth";
+import { SmitheryConnectError } from "../../runtime-mcp/smithery-connect";
 import {
 	SmitheryRegistryError,
 	type SmitherySearchResult,
 	searchSmitheryRegistry,
 	toConfigName,
-} from "../../mcp/smithery-registry";
-import type { MCPAuthConfig, MCPServerConfig, MCPServerConnection } from "../../mcp/types";
+} from "../../runtime-mcp/smithery-registry";
+import type { MCPAuthConfig, MCPServerConfig, MCPServerConnection } from "../../runtime-mcp/types";
 import type { OAuthCredential } from "../../session/auth-storage";
 import { shortenPath } from "../../tools/render-utils";
 import { openPath } from "../../utils/open";
-import { MCPAddWizard } from "../components/mcp-add-wizard";
+import { MCPAddWizard } from "../components/runtime-mcp-add-wizard";
 import { parseCommandArgs } from "../shared";
 import { theme } from "../theme/theme";
 import type { InteractiveModeContext } from "../types";

@@ -45,7 +45,7 @@ import {
 	getPluginsCacheDir,
 	MarketplaceManager,
 } from "./extensibility/plugins/marketplace";
-import type { MCPManager } from "./mcp";
+import type { MCPManager } from "./runtime-mcp";
 import { InteractiveMode, runAcpMode, runPrintMode, runRpcMode } from "./modes";
 import { initTheme, stopThemeWatcher } from "./modes/theme/theme";
 import type { SubmittedUserInput } from "./modes/types";

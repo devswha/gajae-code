@@ -1,5 +1,5 @@
 import { getMCPConfigPath, logger } from "@gajae-code/utils";
-import { connectToServer, disconnectServer, listPrompts, listResources, listTools } from "../../mcp/client";
+import { connectToServer, disconnectServer, listPrompts, listResources, listTools } from "../../runtime-mcp/client";
 import {
 	addMCPServer,
 	readDisabledServers,
@@ -7,11 +7,11 @@ import {
 	removeMCPServer,
 	setServerDisabled,
 	updateMCPServer,
-} from "../../mcp/config-writer";
-import { MCPManager } from "../../mcp/manager";
-import { getSmitheryApiKey } from "../../mcp/smithery-auth";
-import { searchSmitheryRegistry } from "../../mcp/smithery-registry";
-import type { MCPServerConfig, MCPServerConnection } from "../../mcp/types";
+} from "../../runtime-mcp/config-writer";
+import { MCPManager } from "../../runtime-mcp/manager";
+import { getSmitheryApiKey } from "../../runtime-mcp/smithery-auth";
+import { searchSmitheryRegistry } from "../../runtime-mcp/smithery-registry";
+import type { MCPServerConfig, MCPServerConnection } from "../../runtime-mcp/types";
 import { parseCommandArgs } from "../../utils/command-args";
 import type { ParsedSlashCommand, SlashCommandResult, SlashCommandRuntime } from "../types";
 import { commandConsumed, errorMessage, parseNamedScopeArgs, parseSubcommand, usage } from "./parse";

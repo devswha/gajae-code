@@ -1,5 +1,5 @@
-import { MCPManager } from "../mcp/manager";
-import type { MCPResourceReadResult } from "../mcp/types";
+import { MCPManager } from "../runtime-mcp/manager";
+import type { MCPResourceReadResult } from "../runtime-mcp/types";
 import type { InternalResource, InternalUrl, ProtocolHandler } from "./types";
 
 function escapeRegex(text: string): string {

@@ -1,4 +1,4 @@
-import type { MCPServerCapabilities, MCPServerConnection, MCPTransport } from "../src/mcp/types";
+import type { MCPServerCapabilities, MCPServerConnection, MCPTransport } from "../src/runtime-mcp/types";
 
 export function createMockTransport(
 	responses: Map<string, unknown[]>,

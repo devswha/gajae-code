@@ -3,7 +3,7 @@ import {
 	analyzeAuthError,
 	discoverOAuthEndpoints,
 	extractMcpAuthServerUrl,
-} from "@gajae-code/coding-agent/mcp/oauth-discovery";
+} from "../src/runtime-mcp/oauth-discovery";
 import { hookFetch } from "@gajae-code/utils";
 
 describe("mcp oauth discovery", () => {

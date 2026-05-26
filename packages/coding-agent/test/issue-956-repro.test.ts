@@ -3,8 +3,8 @@ import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
 import { getConfigRootDir, getProjectDir, setAgentDir, setProjectDir } from "@gajae-code/utils";
-import * as mcpClient from "../src/mcp/client";
-import { MCPCommandController } from "../src/modes/controllers/mcp-command-controller";
+import * as mcpClient from "../src/runtime-mcp/client";
+import { MCPCommandController } from "../src/modes/controllers/runtime-mcp-command-controller";
 import { initTheme } from "../src/modes/theme/theme";
 
 const originalProjectDir = getProjectDir();

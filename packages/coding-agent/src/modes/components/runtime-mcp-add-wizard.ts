@@ -14,9 +14,9 @@ import {
 	truncateToWidth,
 } from "@gajae-code/tui";
 import { getMCPConfigPath, getProjectDir } from "@gajae-code/utils";
-import { validateServerName } from "../../mcp/config-writer";
-import { analyzeAuthError, discoverOAuthEndpoints } from "../../mcp/oauth-discovery";
-import type { MCPHttpServerConfig, MCPServerConfig, MCPSseServerConfig, MCPStdioServerConfig } from "../../mcp/types";
+import { validateServerName } from "../../runtime-mcp/config-writer";
+import { analyzeAuthError, discoverOAuthEndpoints } from "../../runtime-mcp/oauth-discovery";
+import type { MCPHttpServerConfig, MCPServerConfig, MCPSseServerConfig, MCPStdioServerConfig } from "../../runtime-mcp/types";
 import { shortenPath } from "../../tools/render-utils";
 import { theme } from "../theme/theme";
 import { matchesAppInterrupt } from "../utils/keybinding-matchers";

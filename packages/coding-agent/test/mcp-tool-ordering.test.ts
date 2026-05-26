@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { sortMCPToolsByName } from "../src/mcp/manager";
+import { sortMCPToolsByName } from "../src/runtime-mcp/manager";
 
 // `sortMCPToolsByName` is the cache-stability invariant: Anthropic prompt caching
 // keys on byte-identical tool definitions, so the tools array sent to the API
