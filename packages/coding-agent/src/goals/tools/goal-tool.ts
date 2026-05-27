@@ -103,6 +103,33 @@ function buildGoalToolResult(op: GoalToolDetails["op"], response: GoalToolRespon
 	};
 }
 
+async function executeGoalOperation(session: ToolSession, params: GoalToolInput): Promise<GoalToolResponse> {
+	if (params.op === "get") {
+		const state = session.getGoalModeState?.();
+		return buildGoalToolResponse(state?.goal ?? null);
+	}
+
+	const runtime = session.getGoalRuntime?.();
+	if (!runtime) {
+		throw new ToolError("Goal mode is not active.");
+	}
+
+	if (params.op === "create") {
+		const created = await runtime.createGoal(validateCreateParams(params));
+		return buildGoalToolResponse(created.goal);
+	}
+	if (params.op === "resume") {
+		const resumed = await runtime.resumeGoal();
+		return buildGoalToolResponse(resumed.goal);
+	}
+	if (params.op === "drop") {
+		const dropped = await runtime.dropGoal();
+		return buildGoalToolResponse(dropped ?? null);
+	}
+	const completed = await runtime.completeGoalFromTool();
+	return buildGoalToolResponse(completed, { includeCompletionReport: true });
+}
+
 export class GoalTool implements AgentTool<typeof goalSchema, GoalToolDetails> {
 	readonly name = "goal";
 	readonly label = "Goal";
@@ -123,28 +150,7 @@ export class GoalTool implements AgentTool<typeof goalSchema, GoalToolDetails> {
 		_onUpdate?: AgentToolUpdateCallback<GoalToolDetails>,
 		_context?: AgentToolContext,
 	): Promise<AgentToolResult<GoalToolDetails>> {
-		const runtime = this.#session.getGoalRuntime?.();
-		if (!runtime) {
-			throw new ToolError("Goal mode is not active.");
-		}
-
-		let response: GoalToolResponse;
-		if (params.op === "create") {
-			const created = await runtime.createGoal(validateCreateParams(params));
-			response = buildGoalToolResponse(created.goal);
-		} else if (params.op === "get") {
-			const state = this.#session.getGoalModeState?.();
-			response = buildGoalToolResponse(state?.goal ?? null);
-		} else if (params.op === "resume") {
-			const resumed = await runtime.resumeGoal();
-			response = buildGoalToolResponse(resumed.goal);
-		} else if (params.op === "drop") {
-			const dropped = await runtime.dropGoal();
-			response = buildGoalToolResponse(dropped ?? null);
-		} else {
-			const completed = await runtime.completeGoalFromTool();
-			response = buildGoalToolResponse(completed, { includeCompletionReport: true });
-		}
+		const response = await executeGoalOperation(this.#session, params);
 		return buildGoalToolResult(params.op, response);
 	}
 }
@@ -173,8 +179,8 @@ export class GetGoalTool implements AgentTool<typeof getGoalSchema, GoalToolDeta
 		_onUpdate?: AgentToolUpdateCallback<GoalToolDetails>,
 		_context?: AgentToolContext,
 	): Promise<AgentToolResult<GoalToolDetails>> {
-		const state = this.#session.getGoalModeState?.();
-		return buildGoalToolResult("get", buildGoalToolResponse(state?.goal ?? null));
+		const response = await executeGoalOperation(this.#session, { op: "get" });
+		return buildGoalToolResult("get", response);
 	}
 }
 
@@ -202,12 +208,12 @@ export class CreateGoalTool implements AgentTool<typeof createGoalSchema, GoalTo
 		_onUpdate?: AgentToolUpdateCallback<GoalToolDetails>,
 		_context?: AgentToolContext,
 	): Promise<AgentToolResult<GoalToolDetails>> {
-		const runtime = this.#session.getGoalRuntime?.();
-		if (!runtime) {
-			throw new ToolError("Goal mode is not active.");
-		}
-		const created = await runtime.createGoal(validateCreateParams(params));
-		return buildGoalToolResult("create", buildGoalToolResponse(created.goal));
+		const response = await executeGoalOperation(this.#session, {
+			op: "create",
+			objective: params.objective,
+			token_budget: params.token_budget,
+		});
+		return buildGoalToolResult("create", response);
 	}
 }
 
@@ -235,16 +241,10 @@ export class UpdateGoalTool implements AgentTool<typeof updateGoalSchema, GoalTo
 		_onUpdate?: AgentToolUpdateCallback<GoalToolDetails>,
 		_context?: AgentToolContext,
 	): Promise<AgentToolResult<GoalToolDetails>> {
-		const runtime = this.#session.getGoalRuntime?.();
-		if (!runtime) {
-			throw new ToolError("Goal mode is not active.");
-		}
-		if (params.status === "dropped") {
-			const dropped = await runtime.dropGoal();
-			return buildGoalToolResult("drop", buildGoalToolResponse(dropped ?? null));
-		}
-		const completed = await runtime.completeGoalFromTool();
-		return buildGoalToolResult("complete", buildGoalToolResponse(completed, { includeCompletionReport: true }));
+		const response = await executeGoalOperation(this.#session, {
+			op: params.status === "dropped" ? "drop" : "complete",
+		});
+		return buildGoalToolResult(params.status === "dropped" ? "drop" : "complete", response);
 	}
 }
 
