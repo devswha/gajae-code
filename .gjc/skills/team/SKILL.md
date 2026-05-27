@@ -9,13 +9,13 @@ source: "forked from upstream team skill and rebranded for GJC"
 
 `$team` is the tmux-based parallel execution mode for GJC. It starts real worker GJC worker CLI sessions in split panes and coordinates them through `.gjc/state/team/...` files plus CLI team interop (`gjc team api ...`) and state files.
 
-This skill is operationally sensitive. Treat it as an operator workflow, not a generic prgjct pattern. In GJC App or plain outside-tmux sessions, do not present `$team` / `gjc team` as directly available; launch GJC CLI from shell first, or stay on the nearest app-safe surface until the user explicitly wants the tmux runtime.
+This skill is operationally sensitive. Treat it as an operator workflow, not a generic prompt pattern. In GJC App or plain outside-tmux sessions, do not present `$team` / `gjc team` as directly available; launch GJC CLI from shell first, or stay on the nearest app-safe surface until the user explicitly wants the tmux runtime.
 
 ## Team vs Native Subagents
 
 - Use **GJC native subagents** for bounded, in-session parallelism where one leader thread can fan out a few independent subtasks and wait for them directly.
 - Use **`gjc team`** when you need durable tmux workers, shared task state, mailbox/dispatch coordination, worktrees, explicit lifecycle control, or long-running parallel execution that must survive beyond one local reasoning burst.
-- Native subagents can cgjclement team execution, but they do **not** replace the tmux team runtime's stateful coordination contract.
+- Native subagents can complement team execution, but they do **not** replace the tmux team runtime's stateful coordination contract.
 
 ## What This Skill Must Do
 
@@ -61,13 +61,13 @@ requiring a separate linked execution loop up front.
 
 ### Team + Ultragoal bridge
 
-Use `$ultragoal` for durable leader-owned goal/ledger tracking and `$team` for parallel execution lanes. When Team is launched with an active `.gjc/ultragoal/goals.json`, worker inboxes/status may include leader-owned Ultragoal context: `.gjc/ultragoal/goals.json`, `.gjc/ultragoal/ledger.jsonl`, the active goal id, Codex goal mode, and the `fresh_leader_get_goal_required` checkpoint policy.
+Use `$ultragoal` for durable leader-owned goal/ledger tracking and `$team` for parallel execution lanes. When Team is launched with an active `.gjc/ultragoal/goals.json`, worker inboxes/status may include leader-owned Ultragoal context: `.gjc/ultragoal/goals.json`, `.gjc/ultragoal/ledger.jsonl`, the active goal id, GJC goal mode, and the `fresh_leader_get_goal_required` checkpoint policy.
 
-Workers provide task status and verification evidence only. They do not own Ultragoal goal state, create worker ledgers, mutate `.gjc/ultragoal`, auto-launch Team from Ultragoal, or perform hidden Codex goal mutation. The leader uses terminal Team evidence plus a fresh `get_goal` snapshot to run `gjc ultragoal checkpoint --goal-id <id> --status cgjclete --evidence "<team evidence mentioning .gjc/ultragoal and <id>>" --codex-goal-json <fresh-get_goal-json-or-path>`.
+Workers provide task status and verification evidence only. They do not own Ultragoal goal state, create worker ledgers, mutate `.gjc/ultragoal`, auto-launch Team from Ultragoal, or perform hidden GJC goal mutation. The leader uses terminal Team evidence plus a fresh `get_goal` snapshot to run `gjc ultragoal checkpoint --goal-id <id> --status complete --evidence "<team evidence mentioning .gjc/ultragoal and <id>>" --gjc-goal-json <fresh-get_goal-json-or-path>`.
 
 ### alternate worker CLIs (v0.6.0+)
 
-Important: `N:agent-type` (for example `2:executor`) selects the **worker role prgjct**, not the worker CLI.
+Important: `N:agent-type` (for example `2:executor`) selects the **worker role prompt**, not the worker CLI.
 
 To launch alternate worker CLIs, use the team worker CLI env vars:
 
@@ -75,7 +75,7 @@ To launch alternate worker CLIs, use the team worker CLI env vars:
 # Force all teammates to alternate worker CLI
 GJC_TEAM_WORKER_CLI=gjc gjc team 2:executor "update docs and report"
 
-# Mixed team (worker 1 = Codex, worker 2 = GJC)
+# Mixed team (worker 1 = GJC teammates)
 GJC_TEAM_WORKER_CLI_MAP=gjc,gjc gjc team 2:executor "split doc/code tasks"
 
 # Auto mode: GJC is selected when worker launch args/model contains 'gjc'
@@ -118,7 +118,7 @@ Before launching `gjc team`, require a grounded context snapshot:
 
 Do not start worker panes until this gate is satisfied; if forced to proceed quickly, state explicit scope/risk limitations in the launch report.
 
-For simple read-only brownfield lookups during intake, follow active session guidance: when `USE_GJC_EXPLORE_CMD` is enabled, prefer `gjc explore` with narrow, concrete prgjcts; otherwise use the richer normal explore path and fall back normally if `gjc explore` is unavailable.
+For simple read-only brownfield lookups during intake, follow active session guidance: when `USE_GJC_EXPLORE_CMD` is enabled, prefer `gjc explore` with narrow, concrete prompts; otherwise use the richer normal explore path and fall back normally if `gjc explore` is unavailable.
 
 ## Follow-up Staffing Contract
 
@@ -141,7 +141,7 @@ When `$team` is used as a follow-up mode from ralplan, carry forward the approve
    - `.gjc/state/team/<team>/config.json`
    - `.gjc/state/team/<team>/manifest.v2.json`
    - `.gjc/state/team/<team>/tasks/task-<id>.json`
-4. Cgjcose team-scoped worker instructions file at:
+4. Compose team-scoped worker instructions file at:
    - `.gjc/state/team/<team>/worker-agents.md`
    - Uses project `AGENTS.md` content (if present) + worker overlay, without mutating project `AGENTS.md`
 5. Resolve canonical shared state root from leader cwd (`<leader-cwd>/.gjc/state`)
@@ -150,7 +150,7 @@ When `$team` is used as a follow-up mode from ralplan, carry forward the approve
    - `GJC_TEAM_WORKER=<team>/worker-<n>`
    - `GJC_TEAM_STATE_ROOT=<leader-cwd>/.gjc/state`
    - `GJC_TEAM_LEADER_CWD=<leader-cwd>`
-   - worker CLI selected by `GJC_TEAM_WORKER_CLI` / `GJC_TEAM_WORKER_CLI_MAP` (GJC-cgjcatible worker CLI)
+   - worker CLI selected by `GJC_TEAM_WORKER_CLI` / `GJC_TEAM_WORKER_CLI_MAP` (GJC-compatible worker CLI)
    - optional worktree metadata envs when `--worktree` is used
 7. Wait for worker readiness (`capture-pane` polling)
 8. Write per-worker `inbox.md` and trigger via `tmux send-keys`
@@ -171,7 +171,7 @@ Important:
   3) fallback `GJC_TEAM_WORKER_CLI` / auto detection.
 - Mixed CLI-map teams are supported for both startup and trigger submit behavior.
 - Trigger submit differs by CLI:
-  - Codex may use queue-first `Tab` on busy panes (strategy-dependent).
+  - GJC may use queue-first `Tab` on busy panes (strategy-dependent).
   - GJC always uses direct Enter-only (`C-m`) rounds (never queue-first `Tab`).
 
 ### Team worker model + thinking resolution (current contract)
@@ -181,12 +181,12 @@ Team mode resolves worker **model flags** from one shared launch-arg set (not pe
 Model precedence (highest to lowest):
 1. Explicit worker model in `GJC_TEAM_WORKER_LAUNCH_ARGS`
 2. Inherited leader `--model` flag
-3. Low-cgjclexity default from `GJC_DEFAULT_SPARK_MODEL` (legacy alias: `GJC_SPARK_MODEL`) when 1+2 are absent and team `agentType` is low-cgjclexity
+3. Low-complexity default from `GJC_DEFAULT_SPARK_MODEL` (legacy alias: `GJC_SPARK_MODEL`) when 1+2 are absent and team `agentType` is low-complexity
 
 Default-model rule:
 - Do **not** assume a frontier or spark model from recency or model-family heuristics.
 - Use `GJC_DEFAULT_FRONTIER_MODEL` for frontier-default guidance.
-- Use `GJC_DEFAULT_SPARK_MODEL` for spark/low-cgjclexity worker-default guidance.
+- Use `GJC_DEFAULT_SPARK_MODEL` for spark/low-complexity worker-default guidance.
 
 Thinking-level rule (critical):
 - **No model-name heuristic mapping.**
@@ -219,7 +219,7 @@ Do not treat ad-hoc pane typing as primary control flow when runtime/state evide
 
 ### Active leader monitoring rule
 
-While a team is **ON/running**, the leader must not go blind. Keep checking live team state until terminal cgjcletion.
+While a team is **ON/running**, the leader must not go blind. Keep checking live team state until terminal completion.
 
 Minimum acceptable loop:
 
@@ -233,7 +233,7 @@ If the leader gets a stale, lifecycle, or all-idle nudge, immediately run `gjc t
 
 ### Deprecated worker stall/progress knobs
 
-`GJC_TEAM_PROGRESS_STALL_MS` and `GJC_TEAM_WORKER_TURN_STALL_MS` are legacy cgjcatibility/test-only names for the retired worker stall/progress nudge path. Do not recommend them as operator tuning knobs for active team runs; resolved native worker Stop, all-idle, mailbox, and stale-leader evidence are the supported leader wakeup signals.
+`GJC_TEAM_PROGRESS_STALL_MS` and `GJC_TEAM_WORKER_TURN_STALL_MS` are legacy compatibility/test-only names for the retired worker stall/progress nudge path. Do not recommend them as operator tuning knobs for active team runs; resolved native worker Stop, all-idle, mailbox, and stale-leader evidence are the supported leader wakeup signals.
 
 ## Message Dispatch Policy (CLI-first, state-first)
 
@@ -306,7 +306,7 @@ Examples:
 ```bash
 gjc team api send-message --input '{"team_name":"my-team","from_worker":"worker-1","to_worker":"leader-fixed","body":"ACK"}' --json
 gjc team api claim-task --input '{"team_name":"my-team","task_id":"1","worker":"worker-1"}' --json
-gjc team api transition-task-status --input '{"team_name":"my-team","task_id":"1","from":"in_progress","to":"cgjcleted","claim_token":"<token>"}' --json
+gjc team api transition-task-status --input '{"team_name":"my-team","task_id":"1","from":"in_progress","to":"completed","claim_token":"<token>"}' --json
 ```
 
 `--json` responses include stable metadata for automation:
@@ -331,7 +331,7 @@ Worker-to-leader:
 
 Worker commit protocol (critical for incremental integration):
 
-- After cgjcleting task work and before reporting cgjcletion, workers MUST commit:
+- After completing task work and before reporting completion, workers MUST commit:
   `git add -A && git commit -m "task: <task-subject>"`
 - This ensures changes are available for incremental integration into the leader branch
 - If a worker forgets to commit, the runtime auto-commits as a fallback, but explicit commits are preferred
@@ -351,20 +351,20 @@ Useful runtime env vars:
 - `GJC_TEAM_SKIP_READY_WAIT=1`
   - Skip readiness wait (debug only)
 - `GJC_TEAM_AUTO_TRUST=0`
-  - Disable auto-advance for trust prgjct (default behavior auto-advances)
+  - Disable auto-advance for trust prompt (default behavior auto-advances)
 - `GJC_TEAM_AUTO_ACCEPT_BYPASS=0`
-  - Disable GJC bypass-permissions prgjct auto-accept (default behavior auto-accepts `2` + Enter)
+  - Disable GJC bypass-permissions prompt auto-accept (default behavior auto-accepts `2` + Enter)
 - `GJC_TEAM_WORKER_LAUNCH_ARGS`
   - Extra args passed to worker launch command
 - `GJC_TEAM_WORKER_CLI`
-  - Worker CLI selector: `auto|codex|gjc` (default: `auto`)
-  - `auto` chooses `gjc` when worker `--model` contains `gjc`, otherwise `codex`
+  - Worker CLI selector: `auto|gjc` (default: `auto`; both launch GJC teammate sessions)
+  - `auto` chooses `gjc` when worker `--model` contains `gjc`, otherwise `gjc`
   - In `gjc` mode, workers launch with exactly one `--dangerously-skip-permissions`
     and ignore explicit model/config/effort launch overrides (uses default `settings.json`)
 - `GJC_TEAM_WORKER_CLI_MAP`
-  - Per-worker CLI selector (comma-separated `auto|codex|gjc`)
+  - Per-worker CLI selector (comma-separated `auto|gjc`)
   - Length must be `1` (broadcast) or exactly the team worker count
-  - Example: `GJC_TEAM_WORKER_CLI_MAP=codex,gjc,gjc,gjc`
+  - Example: `GJC_TEAM_WORKER_CLI_MAP=gjc,gjc,gjc,gjc`
   - When present, overrides `GJC_TEAM_WORKER_CLI`
 - `GJC_TEAM_AUTO_INTERRUPT_RETRY`
   - Trigger submit fallback (default: enabled)
@@ -388,7 +388,7 @@ Use only after checking `gjc team status <team>` and mailbox/state evidence:
 1. Capture pane tail to confirm current worker state:
    - `tmux capture-pane -t %<worker-pane> -p -S -120`
    - If a larger-tail read or bounded summary would help, prefer explicit opt-in inspection via `gjc sparkshell --tmux-pane %<worker-pane> --tail-lines 400` before improvising extra tmux commands.
-2. If the pane is stuck in an interactive state, safely return to idle prgjct first:
+2. If the pane is stuck in an interactive state, safely return to idle prompt first:
    - optional interrupt `C-c` or escape flow (CLI-specific) once, then re-check pane capture
 3. Send one concise trigger (single line) and wait for evidence:
    - `tmux send-keys -t %<worker-pane> "ack + continue current task; report status" C-m`
@@ -406,7 +406,7 @@ Checks:
 
 1. `tmux list-panes -F '#{pane_id}\t#{pane_start_command}'`
 2. `tmux capture-pane -t %<worker-pane> -p -S -120`
-3. Verify worker process alive and not stuck on trust prgjct
+3. Verify worker process alive and not stuck on trust prompt
 4. Rebuild if running repo-local (`npm run build`)
 
 ### Team starts but leader gets no ACK
@@ -433,8 +433,8 @@ Checks:
 
 Prevention:
 
-1. Enforce cgjcletion gate (no in-progress tasks) before shutdown
-2. Use `shutdown` only for terminal cgjcletion or explicit abort
+1. Enforce completion gate (no in-progress tasks) before shutdown
+2. Use `shutdown` only for terminal completion or explicit abort
 3. If aborting, expect late worker writes to fail and treat ENOENT as expected teardown artifact
 
 ### Shutdown reports success but stale worker panes remain
@@ -479,7 +479,7 @@ When operating this skill, provide concrete progress evidence:
 4. status/shutdown outcomes
 
 Do not claim success without file/pane evidence.
-Do not claim clean cgjcletion if shutdown occurred with `in_progress>0`.
+Do not claim clean completion if shutdown occurred with `in_progress>0`.
 Use `gjc sparkshell --tmux-pane ...` as an explicit opt-in operator aid for pane inspection and summaries; keep raw `tmux capture-pane` evidence available for manual intervention and proof.
 
 ## Programmatic Team Orchestration
@@ -495,7 +495,7 @@ Use the `gjc team ...` CLI as the supported team-launch surface. For automation,
 
 Two cleanup paths exist and must not be confused:
 
-- `team_cleanup` (**state-server**): Deletes team state **files** on disk (`.gjc/state/team/<team>/`). Use after a team run is fully cgjclete.
+- `team_cleanup` (**state-server**): Deletes team state **files** on disk (`.gjc/state/team/<team>/`). Use after a team run is fully complete.
 - tmux/session cleanup: Use the documented `gjc team` shutdown / cleanup flow when you need to stop worker panes or clean up an interrupted run.
 
 ### Automation example

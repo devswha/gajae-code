@@ -873,12 +873,11 @@ export const writeToolRenderer = {
 		const rawPath = args.file_path || args.path || "";
 		const filePath = shortenPath(rawPath);
 		const lang = getLanguageFromPath(rawPath) ?? "text";
-		const langIcon = uiTheme.fg("muted", uiTheme.getLangIcon(lang));
 		const pathDisplay = filePath ? uiTheme.fg("accent", filePath) : uiTheme.fg("toolOutput", "…");
 		const spinner =
 			options?.spinnerFrame !== undefined ? formatStatusIcon("running", uiTheme, options.spinnerFrame) : "";
 
-		let text = `${formatTitle("Write", uiTheme)} ${spinner ? `${spinner} ` : ""}${langIcon} ${pathDisplay}`;
+		let text = `${formatTitle("Write", uiTheme)} ${spinner ? `${spinner} ` : ""}${pathDisplay}`;
 
 		if (!args.content) {
 			return new Text(text, 0, 0);
@@ -900,7 +899,6 @@ export const writeToolRenderer = {
 		const filePath = shortenPath(rawPath);
 		const fileContent = args?.content || "";
 		const lang = getLanguageFromPath(rawPath);
-		const langIcon = uiTheme.fg("muted", uiTheme.getLangIcon(lang));
 		const pathDisplay = filePath ? uiTheme.fg("accent", filePath) : uiTheme.fg("toolOutput", "…");
 		const lineCount = countLines(fileContent);
 		const lineSuffix = formatLineCountSuffix(lineCount, uiTheme);
@@ -910,7 +908,7 @@ export const writeToolRenderer = {
 			{
 				icon: "success",
 				title: "Write",
-				description: `${langIcon} ${pathDisplay}${lineSuffix}`,
+				description: `${pathDisplay}${lineSuffix}`,
 			},
 			uiTheme,
 		);

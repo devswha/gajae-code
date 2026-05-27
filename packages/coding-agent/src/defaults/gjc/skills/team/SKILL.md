@@ -61,9 +61,9 @@ requiring a separate linked execution loop up front.
 
 ### Team + Ultragoal bridge
 
-Use `$ultragoal` for durable leader-owned goal/ledger tracking and `$team` for parallel execution lanes. When Team is launched with an active `.gjc/ultragoal/goals.json`, worker inboxes/status may include leader-owned Ultragoal context: `.gjc/ultragoal/goals.json`, `.gjc/ultragoal/ledger.jsonl`, the active goal id, Codex goal mode, and the `fresh_leader_get_goal_required` checkpoint policy.
+Use `$ultragoal` for durable leader-owned goal/ledger tracking and `$team` for parallel execution lanes. When Team is launched with an active `.gjc/ultragoal/goals.json`, worker inboxes/status may include leader-owned Ultragoal context: `.gjc/ultragoal/goals.json`, `.gjc/ultragoal/ledger.jsonl`, the active goal id, GJC goal mode, and the `fresh_leader_get_goal_required` checkpoint policy.
 
-Workers provide task status and verification evidence only. They do not own Ultragoal goal state, create worker ledgers, mutate `.gjc/ultragoal`, auto-launch Team from Ultragoal, or perform hidden Codex goal mutation. The leader uses terminal Team evidence plus a fresh `get_goal` snapshot to run `gjc ultragoal checkpoint --goal-id <id> --status complete --evidence "<team evidence mentioning .gjc/ultragoal and <id>>" --codex-goal-json <fresh-get_goal-json-or-path>`.
+Workers provide task status and verification evidence only. They do not own Ultragoal goal state, create worker ledgers, mutate `.gjc/ultragoal`, auto-launch Team from Ultragoal, or perform hidden GJC goal mutation. The leader uses terminal Team evidence plus a fresh `get_goal` snapshot to run `gjc ultragoal checkpoint --goal-id <id> --status complete --evidence "<team evidence mentioning .gjc/ultragoal and <id>>" --gjc-goal-json <fresh-get_goal-json-or-path>`.
 
 ### alternate worker CLIs (v0.6.0+)
 
@@ -75,7 +75,7 @@ To launch alternate worker CLIs, use the team worker CLI env vars:
 # Force all teammates to alternate worker CLI
 GJC_TEAM_WORKER_CLI=gjc gjc team 2:executor "update docs and report"
 
-# Mixed team (worker 1 = Codex, worker 2 = GJC)
+# Mixed team (worker 1 = GJC teammates)
 GJC_TEAM_WORKER_CLI_MAP=gjc,gjc gjc team 2:executor "split doc/code tasks"
 
 # Auto mode: GJC is selected when worker launch args/model contains 'gjc'
@@ -171,7 +171,7 @@ Important:
   3) fallback `GJC_TEAM_WORKER_CLI` / auto detection.
 - Mixed CLI-map teams are supported for both startup and trigger submit behavior.
 - Trigger submit differs by CLI:
-  - Codex may use queue-first `Tab` on busy panes (strategy-dependent).
+  - GJC may use queue-first `Tab` on busy panes (strategy-dependent).
   - GJC always uses direct Enter-only (`C-m`) rounds (never queue-first `Tab`).
 
 ### Team worker model + thinking resolution (current contract)
@@ -357,14 +357,14 @@ Useful runtime env vars:
 - `GJC_TEAM_WORKER_LAUNCH_ARGS`
   - Extra args passed to worker launch command
 - `GJC_TEAM_WORKER_CLI`
-  - Worker CLI selector: `auto|codex|gjc` (default: `auto`)
-  - `auto` chooses `gjc` when worker `--model` contains `gjc`, otherwise `codex`
+  - Worker CLI selector: `auto|gjc` (default: `auto`; both launch GJC teammate sessions)
+  - `auto` chooses `gjc` when worker `--model` contains `gjc`, otherwise `gjc`
   - In `gjc` mode, workers launch with exactly one `--dangerously-skip-permissions`
     and ignore explicit model/config/effort launch overrides (uses default `settings.json`)
 - `GJC_TEAM_WORKER_CLI_MAP`
-  - Per-worker CLI selector (comma-separated `auto|codex|gjc`)
+  - Per-worker CLI selector (comma-separated `auto|gjc`)
   - Length must be `1` (broadcast) or exactly the team worker count
-  - Example: `GJC_TEAM_WORKER_CLI_MAP=codex,gjc,gjc,gjc`
+  - Example: `GJC_TEAM_WORKER_CLI_MAP=gjc,gjc,gjc,gjc`
   - When present, overrides `GJC_TEAM_WORKER_CLI`
 - `GJC_TEAM_AUTO_INTERRUPT_RETRY`
   - Trigger submit fallback (default: enabled)

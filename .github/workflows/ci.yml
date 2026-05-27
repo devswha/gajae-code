@@ -143,6 +143,9 @@ jobs:
       needs: [native_linux, rust-hash]
       if: ${{ !cancelled() && needs.native_linux.result != 'failure' }}
       timeout-minutes: 30
+      permissions:
+         actions: read
+         contents: read
       steps:
          - uses: actions/checkout@v4
          - uses: oven-sh/setup-bun@v2
@@ -160,22 +163,21 @@ jobs:
               sudo ln -s $(which fdfind) /usr/local/bin/fd
               sudo ln -sf /usr/bin/convert /usr/local/bin/magick
          - run: bun install --frozen-lockfile
-         - name: Resolve native source run
-           id: source
-           shell: bash
-           run: |
-              if [ "${{ needs.native_linux.result }}" = "success" ]; then
-                echo "run-id=${{ github.run_id }}" >> "$GITHUB_OUTPUT"
-              else
-                echo "run-id=${{ needs.rust-hash.outputs.run-id }}" >> "$GITHUB_OUTPUT"
-              fi
-         - name: Download native addons
+         - name: Download native addons (current run)
+           if: ${{ needs.native_linux.result == 'success' }}
            uses: actions/download-artifact@v4
            with:
               pattern: pi-natives-linux-x64-*-h${{ needs.rust-hash.outputs.hash }}
               path: packages/natives/native
               merge-multiple: true
-              run-id: ${{ steps.source.outputs.run-id }}
+         - name: Download native addons (cached main run)
+           if: ${{ needs.native_linux.result != 'success' }}
+           uses: actions/download-artifact@v4
+           with:
+              pattern: pi-natives-linux-x64-*-h${{ needs.rust-hash.outputs.hash }}
+              path: packages/natives/native
+              merge-multiple: true
+              run-id: ${{ needs.rust-hash.outputs.run-id }}
               github-token: ${{ secrets.GITHUB_TOKEN }}
          - name: Test workspace (TS)
            env:
