@@ -3,7 +3,7 @@
  * Shares the same kernel session as the agent's eval tool.
  */
 
-import { Container, type Loader, Text, type TUI } from "@gajae-code/tui";
+import { Container, type Loader, padding, Text, type TUI, visibleWidth } from "@gajae-code/tui";
 import { sanitizeText } from "@gajae-code/utils";
 import { highlightCode, theme } from "../../modes/theme/theme";
 import type { TruncationMeta } from "../../tools/output-meta";
@@ -29,14 +29,20 @@ export class EvalExecutionComponent extends Container {
 	#truncation?: TruncationMeta;
 	#expanded = false;
 	#contentContainer: Container;
+	#headerText: Text;
 
 	#highlightLang(): "python" | "javascript" {
 		return this.language === "js" ? "javascript" : "python";
 	}
 
 	#formatHeader(colorKey: ExecutionColorKey): Text {
-		const prompt = theme.fg(colorKey, theme.bold(">>>"));
-		const continuation = theme.fg(colorKey, "    ");
+		const modeLabel = this.language === "js" ? "node" : "python";
+		const promptMarker = `${modeLabel} · >>> `;
+		const prompt = `${theme.fg(colorKey, theme.bold(modeLabel))} ${theme.fg("dim", "·")} ${theme.fg(
+			colorKey,
+			theme.bold(">>>"),
+		)}`;
+		const continuation = padding(visibleWidth(promptMarker));
 		const codeLines = highlightCode(this.code, this.#highlightLang());
 		const headerLines = codeLines.map((line, index) =>
 			index === 0 ? `${prompt} ${line}` : `${continuation}${line}`,
@@ -56,8 +62,9 @@ export class EvalExecutionComponent extends Container {
 		const { contentContainer, loader } = buildExecutionFrame(this, ui, colorKey);
 		this.#contentContainer = contentContainer;
 		this.#loader = loader;
+		this.#headerText = this.#formatHeader(colorKey);
 
-		this.#contentContainer.addChild(this.#formatHeader(colorKey));
+		this.#contentContainer.addChild(this.#headerText);
 		this.#contentContainer.addChild(this.#loader);
 	}
 
@@ -109,8 +116,7 @@ export class EvalExecutionComponent extends Container {
 
 		this.#contentContainer.clear();
 
-		const colorKey: ExecutionColorKey = this.excludeFromContext ? "dim" : "pythonMode";
-		this.#contentContainer.addChild(this.#formatHeader(colorKey));
+		this.#contentContainer.addChild(this.#headerText);
 
 		if (availableLines.length > 0) {
 			if (this.#expanded) {

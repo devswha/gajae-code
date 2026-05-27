@@ -1,6 +1,6 @@
 import { type Component, padding, TERMINAL, truncateToWidth, visibleWidth } from "@gajae-code/tui";
 import { APP_NAME } from "@gajae-code/utils";
-import { theme } from "../../modes/theme/theme";
+import { type ThemeColor, theme } from "../../modes/theme/theme";
 
 export interface RecentSession {
 	name: string;
@@ -14,11 +14,12 @@ export interface LspServerInfo {
 }
 
 /**
- * Premium welcome screen with red-claw GJC mark and two-column layout.
+ * GJC-native launch surface with compact command affordances, project
+ * signals, and a claw/talon mark without copying another agent shell.
  */
 export class WelcomeComponent implements Component {
 	#animStart: number | null = null;
-	#animTimer: ReturnType<typeof setInterval> | null = null;
+	#animTimer: NodeJS.Timeout | null = null;
 
 	constructor(
 		private readonly version: string,
@@ -78,13 +79,16 @@ export class WelcomeComponent implements Component {
 		}
 		const dualContentWidth = boxWidth - 3; // 3 = │ + │ + │
 		const preferredLeftCol = 26;
-		const minLeftCol = 12; // red-claw logo width
+		const minLeftCol = 16; // claw mark plus GJC identity labels
 		const minRightCol = 20;
+		const modelPill = this.#pill(theme.icon.model || "model", this.modelName, "statusLineModel");
+		const providerPill = this.#pill(theme.icon.package || "provider", this.providerName, "statusLinePath");
 		const leftMinContentWidth = Math.max(
 			minLeftCol,
-			visibleWidth("Welcome back!"),
-			visibleWidth(this.modelName),
-			visibleWidth(this.providerName),
+			visibleWidth("Gajae forge"),
+			visibleWidth("shape · act · prove"),
+			visibleWidth(modelPill),
+			visibleWidth(providerPill),
 		);
 		const desiredLeftCol = Math.min(preferredLeftCol, Math.max(minLeftCol, Math.floor(dualContentWidth * 0.35)));
 		const dualLeftCol =
@@ -102,12 +106,13 @@ export class WelcomeComponent implements Component {
 		// Left column - centered content
 		const leftLines = [
 			"",
-			this.#centerText(theme.bold("Welcome back!"), leftCol),
+			this.#centerText(theme.bold(theme.fg("accent", "Gajae forge")), leftCol),
+			this.#centerText(theme.fg("dim", "shape · act · prove"), leftCol),
 			"",
 			...logoColored.map(l => this.#centerText(l, leftCol)),
 			"",
-			this.#centerText(theme.fg("muted", this.modelName), leftCol),
-			this.#centerText(theme.fg("borderMuted", this.providerName), leftCol),
+			this.#centerText(modelPill, leftCol),
+			this.#centerText(providerPill, leftCol),
 		];
 
 		// Right column separator
@@ -117,7 +122,7 @@ export class WelcomeComponent implements Component {
 		// Recent sessions content
 		const sessionLines: string[] = [];
 		if (this.recentSessions.length === 0) {
-			sessionLines.push(` ${theme.fg("dim", "No recent sessions")}`);
+			sessionLines.push(` ${theme.fg("dim", "No saved trails")}`);
 		} else {
 			// Reserve width for the bullet prefix (" • ") and the trailing " (timeAgo)"
 			// so the relative time is never the part that gets truncated. The name
@@ -155,17 +160,25 @@ export class WelcomeComponent implements Component {
 
 		// Right column
 		const rightLines = [
-			` ${theme.bold(theme.fg("accent", "Tips"))}`,
-			` ${theme.fg("dim", "?")}${theme.fg("muted", " for keyboard shortcuts")}`,
-			` ${theme.fg("dim", "#")}${theme.fg("muted", " for prompt actions")}`,
-			` ${theme.fg("dim", "/")}${theme.fg("muted", " for commands")}`,
-			` ${theme.fg("dim", "!")}${theme.fg("muted", " to run bash")}`,
-			` ${theme.fg("dim", "$")}${theme.fg("muted", " to run python")}`,
+			` ${theme.bold(theme.fg("accent", "Flow keys"))}`,
+			` ${theme.fg("dim", "/")}${theme.fg("muted", " commands")} ${theme.fg("dim", "·")} ${theme.fg(
+				"dim",
+				"#",
+			)}${theme.fg("muted", " actions")}`,
+			` ${theme.fg("dim", "!")}${theme.fg("muted", " shell")} ${theme.fg("dim", "·")} ${theme.fg("dim", "$")}${theme.fg(
+				"muted",
+				" python",
+			)}`,
+			` ${theme.fg("dim", "?")}${theme.fg("muted", " keymap")} ${theme.fg("dim", "·")} ${theme.fg(
+				"dim",
+				"ctrl+l",
+			)}${theme.fg("muted", " model")}`,
+			` ${theme.fg("dim", "shift+tab")}${theme.fg("muted", " reasoning")}`,
 			separator,
-			` ${theme.bold(theme.fg("accent", "LSP Servers"))}`,
+			` ${theme.bold(theme.fg("accent", "Project pulse"))}`,
 			...lspLines,
 			separator,
-			` ${theme.bold(theme.fg("accent", "Recent sessions"))}`,
+			` ${theme.bold(theme.fg("accent", "Session trail"))}`,
 			...sessionLines,
 			"",
 		];
@@ -182,7 +195,7 @@ export class WelcomeComponent implements Component {
 		const lines: string[] = [];
 
 		// Top border with embedded title
-		const title = ` ${APP_NAME} v${this.version} `;
+		const title = ` ${APP_NAME} v${this.version} · GJC forge `;
 		const titlePrefixRaw = hChar.repeat(3);
 		const titleStyled = theme.fg("dim", titlePrefixRaw) + theme.fg("muted", title);
 		const titleVisLen = visibleWidth(titlePrefixRaw) + visibleWidth(title);
@@ -226,29 +239,20 @@ export class WelcomeComponent implements Component {
 		return padding(leftPad) + text + padding(rightPad);
 	}
 
-	/** Fit string to exact width with ANSI-aware truncation/padding */
+	/** Fit string to exact width with native ANSI/wide-glyph truncation and padding. */
 	#fitToWidth(str: string, width: number): string {
 		const visLen = visibleWidth(str);
 		if (visLen > width) {
-			const ellipsis = "…";
-			const ellipsisWidth = visibleWidth(ellipsis);
-			const maxWidth = Math.max(0, width - ellipsisWidth);
-			let truncated = "";
-			let currentWidth = 0;
-			let inEscape = false;
-			for (const char of str) {
-				if (char === "\x1b") inEscape = true;
-				if (inEscape) {
-					truncated += char;
-					if (char === "m") inEscape = false;
-				} else if (currentWidth < maxWidth) {
-					truncated += char;
-					currentWidth++;
-				}
-			}
-			return `${truncated}${ellipsis}`;
+			return truncateToWidth(str, width, null, true);
 		}
 		return str + padding(width - visLen);
+	}
+
+	#pill(icon: string, text: string, color: ThemeColor): string {
+		return `${theme.fg("borderMuted", "[")} ${theme.fg(color, icon)} ${theme.fg("muted", text)} ${theme.fg(
+			"borderMuted",
+			"]",
+		)}`;
 	}
 
 	/** Pick the logo frame for the current intro phase, or the resting frame. */
@@ -272,7 +276,7 @@ export class WelcomeComponent implements Component {
 }
 
 // biome-ignore format: preserve ASCII art layout
-const RED_CLAW_LOGO = ["╭─╮    ╭─╮", "╰─╲╭──╮╱─╯", "  │●  ●│  ", "  ╰╮▔▔╭╯  ", "   ╰──╯   "];
+const RED_CLAW_LOGO = ["  ╭╮  ╭╮  ╭╮ ", " ╭╯│ ╭╯│ ╭╯│ ", "╭╯ ╰─╯ ╰─╯ ╰╮", "╰╮  ╭───╮  ╭╯", " ╰──╯   ╰──╯ "];
 
 /** Multi-stop palette for the red-claw diagonal gradient. */
 const GRADIENT_STOPS: ReadonlyArray<readonly [number, number, number]> = [

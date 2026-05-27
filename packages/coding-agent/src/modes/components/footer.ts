@@ -207,38 +207,38 @@ export class FooterComponent implements Component {
 			}
 		}
 
+		const workspacePrefix = `${theme.fg("border", "◆")} ${theme.bold(theme.fg("statusLinePath", "cwd"))} `;
+		const telemetryPrefix = `${theme.fg("border", "◇")} ${theme.bold(theme.fg("statusLineContext", "pulse"))} `;
+		const workspaceWidth = Math.max(1, width - visibleWidth(workspacePrefix));
+		const telemetryWidth = Math.max(1, width - visibleWidth(telemetryPrefix));
+
 		let statsLeftWidth = visibleWidth(statsLeft);
 		const rightSideWidth = visibleWidth(rightSide);
 
-		// If statsLeft is too wide, truncate it
-		if (statsLeftWidth > width) {
-			// Truncate statsLeft to fit width (no room for right side)
-			const plainStatsLeft = statsLeft.replace(/\x1b\[[0-9;]*m/g, "");
-			statsLeft = `${plainStatsLeft.substring(0, width - 1)}…`;
+		// If statsLeft is too wide, truncate it to the post-prefix telemetry budget.
+		if (statsLeftWidth > telemetryWidth) {
+			statsLeft = truncateToWidth(statsLeft, telemetryWidth);
 			statsLeftWidth = visibleWidth(statsLeft);
 		}
 
-		// Calculate available space for padding (minimum 2 spaces between stats and model)
+		// Calculate available space for padding (minimum 2 spaces between stats and model).
 		const minPadding = 2;
 		const totalNeeded = statsLeftWidth + minPadding + rightSideWidth;
 
 		let statsLine: string;
-		if (totalNeeded <= width) {
-			// Both fit - add padding to right-align model
-			const pad = padding(width - statsLeftWidth - rightSideWidth);
+		if (totalNeeded <= telemetryWidth) {
+			// Both fit - add padding to right-align model inside the post-prefix budget.
+			const pad = padding(telemetryWidth - statsLeftWidth - rightSideWidth);
 			statsLine = statsLeft + pad + rightSide;
 		} else {
-			// Need to truncate right side
-			const availableForRight = width - statsLeftWidth - minPadding;
+			// Need to truncate right side inside the post-prefix budget.
+			const availableForRight = telemetryWidth - statsLeftWidth - minPadding;
 			if (availableForRight > 3) {
-				// Truncate to fit (strip ANSI codes for length calculation, then truncate raw string)
-				const plainRightSide = rightSide.replace(/\x1b\[[0-9;]*m/g, "");
-				const truncatedPlain = plainRightSide.substring(0, availableForRight);
-				// For simplicity, just use plain truncated version (loses color, but fits)
-				const pad = padding(width - statsLeftWidth - truncatedPlain.length);
-				statsLine = statsLeft + pad + truncatedPlain;
+				const truncatedRight = truncateToWidth(rightSide, availableForRight);
+				const pad = padding(telemetryWidth - statsLeftWidth - visibleWidth(truncatedRight));
+				statsLine = statsLeft + pad + truncatedRight;
 			} else {
-				// Not enough space for right side at all
+				// Not enough space for right side at all.
 				statsLine = statsLeft;
 			}
 		}
@@ -250,7 +250,10 @@ export class FooterComponent implements Component {
 		const remainder = statsLine.slice(statsLeft.length); // padding + rightSide
 		const dimRemainder = theme.fg("dim", remainder);
 
-		const lines = [theme.fg("dim", pwd), dimStatsLeft + dimRemainder];
+		const lines = [
+			truncateToWidth(`${workspacePrefix}${theme.fg("dim", truncateToWidth(pwd, workspaceWidth))}`, width),
+			truncateToWidth(`${telemetryPrefix}${dimStatsLeft}${dimRemainder}`, width),
+		];
 
 		// Add extension statuses on a single line, sorted by key alphabetically
 		if (this.#extensionStatuses.size > 0) {

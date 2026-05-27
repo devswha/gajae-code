@@ -58,8 +58,16 @@ export class BashExecutionComponent extends Container {
 		this.#contentContainer = contentContainer;
 		this.#loader = loader;
 
-		// Command header
-		this.#headerText = new Text(theme.fg(colorKey, theme.bold(`$ ${command}`)), 1, 0);
+		// Command header: terse shell rail, no extra render work on streaming chunks.
+		const shellLabel = excludeFromContext ? "shell · no context" : "shell";
+		this.#headerText = new Text(
+			`${theme.fg(colorKey, theme.bold(shellLabel))} ${theme.fg("dim", "·")} ${theme.fg(
+				colorKey,
+				theme.bold(`$ ${command}`),
+			)}`,
+			1,
+			0,
+		);
 		this.#contentContainer.addChild(this.#headerText);
 		this.#contentContainer.addChild(this.#loader);
 	}

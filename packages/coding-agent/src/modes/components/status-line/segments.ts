@@ -63,11 +63,18 @@ function classifyProjectDir(pwd: string): { scratch: boolean; relative: string |
 // Segment Implementations
 // ═══════════════════════════════════════════════════════════════════════════
 
-const piSegment: StatusLineSegment = {
+const gajaeSegment: StatusLineSegment = {
+	id: "gajae",
+	render(_ctx) {
+		return { content: theme.fg("accent", "GJC"), visible: true };
+	},
+};
+
+// Legacy custom-config alias only. Public presets must use `gajae`.
+const legacyPiSegment: StatusLineSegment = {
 	id: "pi",
 	render(_ctx) {
-		const content = theme.icon.pi ? `${theme.icon.pi} ` : "";
-		return { content: theme.fg("accent", content), visible: true };
+		return gajaeSegment.render(_ctx);
 	},
 };
 
@@ -517,7 +524,8 @@ const usageSegment: StatusLineSegment = {
 // ═══════════════════════════════════════════════════════════════════════════
 
 export const SEGMENTS: Record<StatusLineSegmentId, StatusLineSegment> = {
-	pi: piSegment,
+	gajae: gajaeSegment,
+	pi: legacyPiSegment,
 	model: modelSegment,
 	mode: modeSegment,
 	path: pathSegment,

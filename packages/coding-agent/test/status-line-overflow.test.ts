@@ -94,7 +94,7 @@ describe("status line session accent", () => {
 		const component = new StatusLineComponent(createStatusLineSession("Named session"));
 		component.updateSettings({
 			preset: "custom",
-			leftSegments: ["pi"],
+			leftSegments: ["gajae"],
 			rightSegments: ["session_name"],
 			separator: "powerline-thin",
 			sessionAccent,

@@ -2,12 +2,12 @@ import type { PresetDef, StatusLinePreset } from "./types";
 
 export const STATUS_LINE_PRESETS: Record<StatusLinePreset, PresetDef> = {
 	default: {
-		leftSegments: ["model", "mode", "path", "git", "pr", "context_pct", "cost"],
-		rightSegments: ["session_name"],
+		leftSegments: ["model", "mode", "git", "pr", "path"],
+		rightSegments: ["session_name", "token_rate", "context_pct", "cost"],
 		separator: "slash",
 		segmentOptions: {
 			model: { showThinkingLevel: true },
-			path: { abbreviate: true, maxLength: 40, stripWorkPrefix: true },
+			path: { abbreviate: true, maxLength: 32, stripWorkPrefix: true },
 			git: { showBranch: true, showStaged: true, showUnstaged: true, showUntracked: true },
 		},
 	},
@@ -33,7 +33,7 @@ export const STATUS_LINE_PRESETS: Record<StatusLinePreset, PresetDef> = {
 	},
 
 	full: {
-		leftSegments: ["pi", "hostname", "model", "mode", "path", "git", "pr", "subagents"],
+		leftSegments: ["gajae", "hostname", "model", "mode", "path", "git", "pr", "subagents"],
 		rightSegments: [
 			"session_name",
 			"token_in",
@@ -56,7 +56,7 @@ export const STATUS_LINE_PRESETS: Record<StatusLinePreset, PresetDef> = {
 
 	nerd: {
 		// Full preset with all Nerd Font icons
-		leftSegments: ["pi", "hostname", "model", "mode", "path", "git", "pr", "session", "subagents"],
+		leftSegments: ["gajae", "hostname", "model", "mode", "path", "git", "pr", "session", "subagents"],
 		rightSegments: [
 			"session_name",
 			"token_in",

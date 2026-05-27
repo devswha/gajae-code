@@ -74,6 +74,10 @@ async function verifyStatusDefaults(): Promise<GateResult> {
 	const fullStart = presets.indexOf("full:");
 	const defaultBlock = defaultStart >= 0 && minimalStart > defaultStart ? presets.slice(defaultStart, minimalStart) : "";
 	const compactBlock = compactStart >= 0 && fullStart > compactStart ? presets.slice(compactStart, fullStart) : "";
+	const leftSegmentsByPreset = parsePresetLeftSegments(presets);
+	const publicPresetUsesPi = Object.entries(leftSegmentsByPreset).filter(([, segments]) => segments.includes("pi"));
+	const fullUsesGajae = leftSegmentsByPreset.full?.includes("gajae") === true;
+	const nerdUsesGajae = leftSegmentsByPreset.nerd?.includes("gajae") === true;
 	return {
 		name: "default-visible status line identity",
 		passed:
@@ -81,13 +85,30 @@ async function verifyStatusDefaults(): Promise<GateResult> {
 			!defaultBlock.includes('"pi"') &&
 			compactBlock.includes('separator: "slash"') &&
 			presets.includes('full: {') &&
-			presets.includes('leftSegments: ["pi", "hostname"'),
+			fullUsesGajae &&
+			nerdUsesGajae &&
+			publicPresetUsesPi.length === 0,
 		details: [
 			`default separator slash: ${defaultBlock.includes('separator: "slash"')}`,
 			`default pi segment absent: ${!defaultBlock.includes('"pi"')}`,
-			`full/nerd opt-in pi retained: ${presets.includes('leftSegments: ["pi", "hostname"')}`,
+			`full GJC identity present: ${fullUsesGajae}`,
+			`nerd GJC identity present: ${nerdUsesGajae}`,
+			`public pi preset absent: ${publicPresetUsesPi.length === 0}${
+				publicPresetUsesPi.length > 0 ? ` (${publicPresetUsesPi.map(([name]) => name).join(", ")})` : ""
+			}`,
 		],
 	};
+}
+
+function parsePresetLeftSegments(source: string): Record<string, string[]> {
+	const result: Record<string, string[]> = {};
+	const presetRegex = /\n\t([a-z_]+): \{[\s\S]*?leftSegments: \[([^\]]*)\]/g;
+	for (const match of source.matchAll(presetRegex)) {
+		const [, name, rawSegments] = match;
+		if (!name || !rawSegments) continue;
+		result[name] = [...rawSegments.matchAll(/"([^"]+)"/g)].map(segmentMatch => segmentMatch[1]).filter(Boolean);
+	}
+	return result;
 }
 
 async function verifyExportBranding(): Promise<GateResult> {
