@@ -143,15 +143,26 @@ describe("SubagentTool", () => {
 		expect(guidance).toContain("cancel only if the subagent has actually failed");
 		expect(guidance).not.toContain("steer");
 		expect(guidance).not.toContain("shutdown");
+
+		await Bun.sleep(80);
+		const completed = await tool.execute("subagent-await-completed", {
+			action: "await",
+			ids: ["0-Slow"],
+			timeout_ms: 100,
+		});
+
+		expect(completed.details?.subagents[0]?.status).toBe("completed");
+		expect(completed.details?.subagents[0]?.resultText).toContain("slow result");
+		expect(manager.getJob("job-slow")?.status).toBe("completed");
 		await manager.dispose({ timeoutMs: 100 });
 	});
 
-	it("cancel stops a selected running subagent by subagent id", async () => {
+	it("cancel stops a selected known-bad running subagent by subagent id", async () => {
 		const manager = createManager();
 		const tool = new SubagentTool(createSession());
 		manager.register(
 			"task",
-			"cancel subagent",
+			"known-bad cancel subagent",
 			async ({ signal }) => {
 				while (!signal.aborted) await Bun.sleep(5);
 				throw new Error("cancelled");

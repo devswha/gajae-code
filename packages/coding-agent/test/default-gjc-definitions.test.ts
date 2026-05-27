@@ -164,6 +164,9 @@ Project executor override body.
 		expect(ultragoal).toContain("Role agents return implementation/review evidence");
 		expect(ultragoal).toContain("await timeout only limits the leader's wait");
 		expect(ultragoal).toContain("must not be used as a cancellation reason");
+		expect(ultragoal).toContain("the subagent has actually failed");
+		expect(ultragoal).toContain("gone off-track");
+		expect(ultragoal).toContain("become unrecoverably wrong");
 	});
 
 	it("installs bundled workflow skill definitions without overwriting local edits unless forced", async () => {

@@ -18,4 +18,4 @@ Wait for selected subagents by `ids`; omit `ids` to wait for current running sub
 
 ## `action: "cancel"`
 Stop selected running subagents by `ids`.
-- Use only when the subagent has actually failed, gone off-track, or become unrecoverably stuck; an await timeout alone is never a cancellation reason.
+- Use only when the subagent has actually failed, gone off-track, or become unrecoverably wrong; an await timeout alone is never a cancellation reason.
