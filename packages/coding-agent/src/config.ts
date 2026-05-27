@@ -6,12 +6,9 @@ import { expandTilde } from "./tools/path-utils";
 
 export * from "./config/config-file";
 
-const priorityList = [
-	{ dir: CONFIG_DIR_NAME, globalAgentDir: getConfigAgentDirName },
-	{ dir: ".claude" },
-	{ dir: ".codex" },
-	{ dir: ".gemini" },
-];
+const USER_CONFIG_PRIORITY = [{ dir: CONFIG_DIR_NAME, globalAgentDir: getConfigAgentDirName }, { dir: ".gemini" }];
+
+const PROJECT_CONFIG_PRIORITY = [{ dir: CONFIG_DIR_NAME }, { dir: ".gemini" }];
 
 // =============================================================================
 // Package Directory (for optional external docs/examples)
@@ -50,22 +47,22 @@ export function getChangelogPath(): string {
 
 /**
  * Config directory bases in priority order (highest first).
- * User-level: ~/.gjc/agent, ~/.claude, ~/.codex, ~/.gemini
- * Project-level: .gjc, .claude, .codex, .gemini
+ * User-level: ~/.gjc/agent, ~/.gemini
+ * Project-level: .gjc, .gemini
  */
-const USER_CONFIG_BASES = priorityList.map(({ dir, globalAgentDir }) => ({
+const USER_CONFIG_BASES = USER_CONFIG_PRIORITY.map(({ dir, globalAgentDir }) => ({
 	base: () => path.join(os.homedir(), globalAgentDir ? globalAgentDir() : dir),
 	name: dir,
 }));
 
-const PROJECT_CONFIG_BASES = priorityList.map(({ dir }) => ({
+const PROJECT_CONFIG_BASES = PROJECT_CONFIG_PRIORITY.map(({ dir }) => ({
 	base: dir,
 	name: dir,
 }));
 
 export interface ConfigDirEntry {
 	path: string;
-	source: string; // e.g., ".gjc", ".claude"
+	source: string; // e.g. ".gjc"
 	level: "user" | "project";
 }
 

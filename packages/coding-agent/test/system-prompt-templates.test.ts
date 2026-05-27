@@ -199,7 +199,7 @@ describe("system Handlebars prompt templates", () => {
 			mcpDiscoveryServerSummaries: ["github (2 tools)", "slack (1 tool)"],
 		});
 
-		expect(rendered).toContain("## Discovery");
+		expect(rendered).toContain("<discovery>");
 		expect(rendered).toContain("Discoverable MCP servers in this session: github (2 tools), slack (1 tool).");
 		expect(rendered).not.toContain("Example discoverable MCP tools:");
 		expect(rendered).toContain("call `search_tool_bm25` before concluding no such tool exists");
@@ -223,7 +223,7 @@ describe("system Handlebars prompt templates", () => {
 			});
 
 			expect(systemPrompt).toHaveLength(2);
-			expect(systemPrompt[0]).toContain("[CONTRACT]");
+			expect(systemPrompt[0]).toContain("<completion-contract>");
 			expect(systemPrompt[0]).not.toContain("current working directory");
 			expect(systemPrompt[1]).toContain("<workstation>");
 			expect(systemPrompt[1]).toContain("<workspace-tree>");
@@ -351,7 +351,7 @@ describe("system Handlebars prompt templates", () => {
 		const promptText = systemPrompt.join("\n\n");
 
 		expect(promptText).toContain("Edit: `apply_patch`");
-		expect(promptText).toContain("surgical text edits → `apply_patch`");
+		expect(promptText).toContain("Surgical text edits → `apply_patch`");
 		expect(promptText).not.toContain("Edit: `edit`");
 	});
 

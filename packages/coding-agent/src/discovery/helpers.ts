@@ -752,12 +752,12 @@ export async function resolveOrDefaultProjectRegistryPath(cwd: string): Promise<
 const pluginRootsCache = new Map<string, { roots: ClaudePluginRoot[]; warnings: string[] }>();
 
 /**
- * List all installed Claude Code plugin roots from the plugin cache.
- * Reads ~/.claude/plugins/installed_plugins.json and ~/.gjc/plugins/installed_plugins.json,
- * and optionally the nearest project-scoped registry resolved from `cwd`.
+ * List installed GJC plugin roots from the GJC plugin registry and, when present,
+ * the nearest project-scoped registry resolved from `cwd`.
  *
  * Results are cached per `home:resolvedProjectPath` key to avoid repeated parsing.
  */
+
 export async function listClaudePluginRoots(
 	home: string,
 	cwd?: string,
@@ -771,52 +771,7 @@ export async function listClaudePluginRoots(
 	const warnings: string[] = [];
 	const projectRoots: ClaudePluginRoot[] = [];
 
-	// ── Claude Code registry ──────────────────────────────────────────────────
-	const registryPath = path.join(home, ".claude", "plugins", "installed_plugins.json");
-	const content = await readFile(registryPath);
-
-	if (content) {
-		const registry = parseClaudePluginsRegistry(content);
-		if (!registry) {
-			warnings.push(`Failed to parse Claude Code plugin registry: ${registryPath}`);
-		} else {
-			for (const [pluginId, entries] of Object.entries(registry.plugins)) {
-				if (!Array.isArray(entries) || entries.length === 0) continue;
-
-				// Parse plugin ID format: "plugin-name@marketplace"
-				const atIndex = pluginId.lastIndexOf("@");
-				if (atIndex === -1) {
-					warnings.push(`Invalid plugin ID format (missing @marketplace): ${pluginId}`);
-					continue;
-				}
-
-				const pluginName = pluginId.slice(0, atIndex);
-				const marketplace = pluginId.slice(atIndex + 1);
-
-				// Process all valid entries, not just the first one.
-				// This handles plugins with multiple installs (different scopes/versions).
-				for (const entry of entries) {
-					if (!entry.installPath || typeof entry.installPath !== "string") {
-						warnings.push(`Plugin ${pluginId} entry has no installPath`);
-						continue;
-					}
-					if (entry.enabled === false) continue;
-
-					roots.push({
-						id: pluginId,
-						marketplace,
-						plugin: pluginName,
-						version: entry.version || "unknown",
-						path: entry.installPath,
-						scope: entry.scope || "user",
-					});
-				}
-			}
-		}
-	}
-
 	// ── GJC installed plugins registry ───────────────────────────────────────
-	// GJC registry is authoritative: its entries replace Claude's entries for the same plugin ID.
 	// In production `home` is `os.homedir()`, so `getPluginsDir(home)` resolves to the
 	// same XDG-aware path the marketplace writer uses (reads and writes always agree).
 	// Tests pass a temp dir, which short-circuits the resolver for deterministic isolation.
@@ -835,11 +790,6 @@ export async function listClaudePluginRoots(
 				}
 				const pluginName = pluginId.slice(0, atIndex);
 				const marketplace = pluginId.slice(atIndex + 1);
-
-				// GJC is authoritative: drop all Claude-sourced entries for this plugin ID
-				const filtered = roots.filter(r => r.id !== pluginId);
-				roots.length = 0;
-				roots.push(...filtered);
 
 				for (const entry of entries) {
 					if (!entry.installPath || typeof entry.installPath !== "string") {
@@ -943,7 +893,6 @@ export function clearClaudePluginRootsCache(): void {
  * installing/uninstalling/enabling/disabling plugins.
  */
 export function clearPluginRootsAndCaches(extraPaths?: readonly string[]): void {
-	invalidateFsCache(path.join(os.homedir(), ".claude", "plugins", "installed_plugins.json"));
 	invalidateFsCache(path.join(getPluginsDir(), "installed_plugins.json"));
 	for (const p of extraPaths ?? []) invalidateFsCache(p);
 	clearClaudePluginRootsCache();

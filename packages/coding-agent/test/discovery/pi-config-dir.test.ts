@@ -33,4 +33,15 @@ describe("PI_CONFIG_DIR", () => {
 		const expected = path.resolve(path.join(os.homedir(), ".config/gjc", "agent", "commands"));
 		expect(result[0]).toEqual({ path: expected, source: ".gjc", level: "user" });
 	});
+	test("getConfigDirs excludes Claude and Codex config roots", () => {
+		const userDirs = getConfigDirs("", { project: false }).map(entry => entry.source);
+		const projectDirs = getConfigDirs("", { user: false, project: true, cwd: "/work/project" }).map(
+			entry => entry.source,
+		);
+
+		expect(userDirs).not.toContain(".claude");
+		expect(userDirs).not.toContain(".codex");
+		expect(projectDirs).not.toContain(".claude");
+		expect(projectDirs).not.toContain(".codex");
+	});
 });

@@ -8,7 +8,7 @@ import { clearClaudePluginRootsCache } from "@gajae-code/coding-agent/discovery/
 import "@gajae-code/coding-agent/discovery/claude-plugins";
 import type { MCPServer } from "../src/capability/mcp";
 
-describe("issue-851: claude-plugins loads flat .mcp.json shape", () => {
+describe("issue-851: marketplace plugins load flat .mcp.json shape", () => {
 	let tempDir: string;
 	let originalHome: string | undefined;
 
@@ -31,7 +31,7 @@ describe("issue-851: claude-plugins loads flat .mcp.json shape", () => {
 	});
 
 	async function setupPlugin(pluginId: string, mcpJson: unknown): Promise<void> {
-		const pluginsDir = path.join(tempDir, ".claude", "plugins");
+		const pluginsDir = path.join(tempDir, ".gjc", "plugins");
 		const pluginPath = path.join(tempDir, "plugins", pluginId);
 		await fs.mkdir(pluginsDir, { recursive: true });
 		await fs.mkdir(pluginPath, { recursive: true });

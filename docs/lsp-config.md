@@ -24,8 +24,8 @@ GJC merges LSP config from multiple files, lowest to highest priority:
 | Priority | Location |
 |----------|----------|
 | 5 (lowest) | `~/lsp.json`, `~/.lsp.json`, `~/lsp.yaml`, `~/.lsp.yaml` |
-| 3 | `~/.gjc/agent/lsp.json`, `~/.gjc/agent/lsp.yaml`, `~/.claude/lsp.*` |
-| 2 | `<project>/.gjc/lsp.json`, `<project>/.gjc/lsp.yaml`, `<project>/.claude/lsp.*` |
+| 3 | `~/.gjc/agent/lsp.json`, `~/.gjc/agent/lsp.yaml`, `~/.gemini/lsp.*` |
+| 2 | `<project>/.gjc/lsp.json`, `<project>/.gjc/lsp.yaml`, `<project>/.gemini/lsp.*` |
 | 1 (highest) | `<project>/lsp.json`, `<project>/.lsp.json`, `<project>/lsp.yaml` |
 
 Each location accepts both `.json` and `.yaml` / `.yml` variants, as well as hidden-file versions (`.lsp.json`, `.lsp.yaml`). Files are merged in order: higher-priority files override lower-priority fields for the same server. Servers not mentioned in any override file remain at their built-in defaults.

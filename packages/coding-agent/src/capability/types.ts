@@ -1,9 +1,9 @@
 /**
  * Core types for the capability-based config discovery system.
  *
- * This architecture inverts control: instead of callers knowing about paths like
- * `.claude`, `.codex`, `.gemini`, they simply ask for `load("mcps")` and get back
- * a unified array of MCP servers.
+ * This architecture inverts control: instead of callers knowing provider-specific
+ * paths like `.gjc`, `.gemini`, or `.vscode`, they simply ask for `load("mcps")`
+ * and get back a unified array of MCP servers.
  */
 
 /**
@@ -37,7 +37,7 @@ export interface Provider<T> {
 	/** Human-readable name for UI display (e.g., "Claude Code", "OpenAI Codex") */
 	displayName: string;
 
-	/** Short description for settings UI (e.g., "Load config from ~/.claude and .claude/") */
+	/** Short description for settings UI (e.g., "Load config from .gjc/") */
 	description: string;
 
 	/**

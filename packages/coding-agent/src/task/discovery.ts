@@ -3,11 +3,8 @@
  *
  * Discovers agent definitions from:
  *   - ~/.gjc/agent/agents/*.md (user-level, primary)
- *   - ~/.pi/agent/agents/*.md (user-level, legacy)
- *   - ~/.claude/agents/*.md (user-level, legacy)
  *   - .gjc/agents/*.md (project-level, primary)
- *   - .pi/agents/*.md (project-level, legacy)
- *   - .claude/agents/*.md (project-level, legacy)
+ *   - installed GJC plugin roots
  *
  * Agent files use markdown with YAML frontmatter.
  */
@@ -56,7 +53,7 @@ async function loadAgentsFromDir(dir: string, source: AgentSource): Promise<Agen
 /**
  * Discover agents from filesystem and merge with bundled agents.
  *
- * Precedence (highest wins): .gjc > .pi > .claude (project before user), then bundled
+ * Precedence (highest wins): .gjc project, .gjc user, GJC plugins, then bundled
  *
  * @param cwd - Current working directory for project agent discovery
  */
@@ -64,7 +61,7 @@ export async function discoverAgents(cwd: string, home: string = os.homedir()): 
 	const resolvedCwd = path.resolve(cwd);
 	const agentSources = Array.from(new Set(getConfigDirs("", { project: false }).map(entry => entry.source)));
 
-	// Get user directories (priority order: .gjc, .pi, .claude, ...)
+	// Get user directories (priority order: .gjc, ...)
 	const userDirs = getConfigDirs("agents", { project: false })
 		.filter(entry => agentSources.includes(entry.source))
 		.map(entry => ({
@@ -92,7 +89,7 @@ export async function discoverAgents(cwd: string, home: string = os.homedir()): 
 		if (user) orderedDirs.push({ dir: user.path, source: "user" });
 	}
 
-	// Load agents from Claude Code marketplace plugins (respects disabledProviders)
+	// Load agents from GJC marketplace plugins.
 	const { roots: pluginRoots } = isProviderEnabled("claude-plugins")
 		? await listClaudePluginRoots(home, resolvedCwd)
 		: { roots: [] };

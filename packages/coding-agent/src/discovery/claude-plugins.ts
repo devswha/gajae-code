@@ -1,8 +1,7 @@
 /**
- * Claude Code Marketplace Plugin Provider
+ * GJC Marketplace Plugin Provider
  *
- * Loads configuration from ~/.claude/plugins/cache/ based on installed_plugins.json registry.
- * Priority: 70 (below claude.ts at 80, so user overrides in .claude/ take precedence)
+ * Loads plugin roots from GJC plugin registries and explicit plugin-dir roots.
  */
 import * as path from "node:path";
 import { logger } from "@gajae-code/utils";
@@ -25,8 +24,8 @@ import {
 import { substitutePluginRoot } from "./substitute-plugin-root";
 
 const PROVIDER_ID = "claude-plugins";
-const DISPLAY_NAME = "Claude Code Marketplace";
-const PRIORITY = 70; // Below claude.ts (80) so user .claude/ overrides win
+const DISPLAY_NAME = "GJC Marketplace";
+const PRIORITY = 70;
 
 interface ClaudePluginManifest {
 	skills?: string;
@@ -350,7 +349,7 @@ async function loadMCPServers(ctx: LoadContext): Promise<LoadResult<MCPServer>> 
 registerProvider<Skill>(skillCapability.id, {
 	id: PROVIDER_ID,
 	displayName: DISPLAY_NAME,
-	description: "Load skills from Claude Code marketplace plugins (~/.claude/plugins/cache/)",
+	description: "Load skills from GJC marketplace plugins",
 	priority: PRIORITY,
 	load: loadSkills,
 });
@@ -358,7 +357,7 @@ registerProvider<Skill>(skillCapability.id, {
 registerProvider<SlashCommand>(slashCommandCapability.id, {
 	id: PROVIDER_ID,
 	displayName: DISPLAY_NAME,
-	description: "Load slash commands from Claude Code marketplace plugins",
+	description: "Load slash commands from GJC marketplace plugins",
 	priority: PRIORITY,
 	load: loadSlashCommands,
 });
@@ -366,7 +365,7 @@ registerProvider<SlashCommand>(slashCommandCapability.id, {
 registerProvider<Hook>(hookCapability.id, {
 	id: PROVIDER_ID,
 	displayName: DISPLAY_NAME,
-	description: "Load hooks from Claude Code marketplace plugins",
+	description: "Load hooks from GJC marketplace plugins",
 	priority: PRIORITY,
 	load: loadHooks,
 });
@@ -374,7 +373,7 @@ registerProvider<Hook>(hookCapability.id, {
 registerProvider<CustomTool>(toolCapability.id, {
 	id: PROVIDER_ID,
 	displayName: DISPLAY_NAME,
-	description: "Load custom tools from Claude Code marketplace plugins",
+	description: "Load custom tools from GJC marketplace plugins",
 	priority: PRIORITY,
 	load: loadTools,
 });

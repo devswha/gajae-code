@@ -70,6 +70,18 @@ describe("SYSTEM.md prompt assembly", () => {
 
 		await expect(loadSystemPromptFiles({ cwd: projectDir })).resolves.toBe("Project SYSTEM prompt");
 	});
+	it("does not load user-home Claude or Codex prompt files", async () => {
+		const projectDir = path.join(tempDir, "project");
+		fs.mkdirSync(projectDir, { recursive: true });
+		fs.mkdirSync(path.join(tempHomeDir, ".claude"), { recursive: true });
+		fs.mkdirSync(path.join(tempHomeDir, ".codex"), { recursive: true });
+		fs.writeFileSync(path.join(tempHomeDir, ".claude", "CLAUDE.md"), "Home Claude instructions");
+		fs.writeFileSync(path.join(tempHomeDir, ".claude", "SYSTEM.md"), "Home Claude system prompt");
+		fs.writeFileSync(path.join(tempHomeDir, ".codex", "AGENTS.md"), "Home Codex instructions");
+
+		await expect(loadSystemPromptFiles({ cwd: projectDir })).resolves.toBeNull();
+		await expect(loadProjectContextFiles({ cwd: projectDir })).resolves.toEqual([]);
+	});
 	it("drops identical explicit context entries even when file names differ", async () => {
 		const farPath = path.join(tempDir, "far", "AGENTS.md");
 		const nearPath = path.join(tempDir, "near", "CLAUDE.md");
