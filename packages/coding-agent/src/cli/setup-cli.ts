@@ -1,7 +1,7 @@
 /**
  * Setup CLI command handler.
  *
- * Handles `gjc setup <component>` to install dependencies for optional features.
+ * Handles `gjc setup [component]` to install the normal defaults or optional feature dependencies.
  */
 import * as path from "node:path";
 import { $which, APP_NAME, getPythonEnvDir } from "@gajae-code/utils";
@@ -40,6 +40,31 @@ export interface SetupCommandArgs {
 
 const VALID_COMPONENTS: SetupComponent[] = ["defaults", "hooks", "provider", "python", "stt"];
 
+function hasProviderSetupFlags(flags: SetupCommandArgs["flags"]): boolean {
+	return (
+		flags.compat !== undefined ||
+		flags.provider !== undefined ||
+		flags.baseUrl !== undefined ||
+		flags.apiKey !== undefined ||
+		flags.apiKeyEnv !== undefined ||
+		flags.model !== undefined ||
+		flags.modelsPath !== undefined
+	);
+}
+
+function rejectProviderFlagsOutsideProvider(component: SetupComponent, flags: SetupCommandArgs["flags"]): void {
+	if (component === "provider" || !hasProviderSetupFlags(flags)) {
+		return;
+	}
+	console.error(chalk.red("Provider setup flags require the explicit `provider` component."));
+	console.error(
+		chalk.dim(
+			`Run: ${APP_NAME} setup provider --compat <openai|anthropic> --provider <id> --base-url <url> --api-key-env <ENV> --model <id>`,
+		),
+	);
+	process.exit(1);
+}
+
 const MANAGED_PYTHON_ENV = getPythonEnvDir();
 
 /**
@@ -51,21 +76,10 @@ export function parseSetupArgs(args: string[]): SetupCommandArgs | undefined {
 		return undefined;
 	}
 
-	if (args.length < 2) {
-		console.error(chalk.red(`Usage: ${APP_NAME} setup <component>`));
-		console.error(`Valid components: ${VALID_COMPONENTS.join(", ")}`);
-		process.exit(1);
-	}
-
-	const component = args[1];
-	if (!VALID_COMPONENTS.includes(component as SetupComponent)) {
-		console.error(chalk.red(`Unknown component: ${component}`));
-		console.error(`Valid components: ${VALID_COMPONENTS.join(", ")}`);
-		process.exit(1);
-	}
-
+	let component: SetupComponent = "defaults";
+	let componentSeen = false;
 	const flags: SetupCommandArgs["flags"] = {};
-	for (let i = 2; i < args.length; i++) {
+	for (let i = 1; i < args.length; i++) {
 		const arg = args[i];
 		if (arg === "--json") {
 			flags.json = true;
@@ -87,11 +101,20 @@ export function parseSetupArgs(args: string[]): SetupCommandArgs | undefined {
 			flags.model = [...(flags.model ?? []), args[++i] ?? ""];
 		} else if (arg === "--models-path") {
 			flags.modelsPath = args[++i];
+		} else if (!componentSeen && VALID_COMPONENTS.includes(arg as SetupComponent)) {
+			component = arg as SetupComponent;
+			componentSeen = true;
+		} else {
+			console.error(chalk.red(`Unknown setup argument: ${arg}`));
+			console.error(`Valid components: ${VALID_COMPONENTS.join(", ")}`);
+			process.exit(1);
 		}
 	}
 
+	rejectProviderFlagsOutsideProvider(component, flags);
+
 	return {
-		component: component as SetupComponent,
+		component,
 		flags,
 	};
 }
@@ -145,6 +168,7 @@ async function checkPythonSetup(): Promise<PythonCheckResult> {
  * Run the setup command.
  */
 export async function runSetupCommand(cmd: SetupCommandArgs): Promise<void> {
+	rejectProviderFlagsOutsideProvider(cmd.component, cmd.flags);
 	switch (cmd.component) {
 		case "defaults":
 			await handleDefaultsSetup(cmd.flags);
@@ -264,23 +288,23 @@ async function handleDefaultsSetup(flags: { json?: boolean; check?: boolean; for
 
 	if (flags.check) {
 		if (hasCheckFailure) {
-			console.error(chalk.red(`${theme.status.error} Default GJC definitions are not fully installed`));
+			console.error(chalk.red(`${theme.status.error} Default GJC workflow skills are not fully installed`));
 			console.error(chalk.dim(`Target: ${result.targetRoot}`));
 			console.error(
 				chalk.dim(`Missing: ${result.missing}; different: ${result.different}; matching: ${result.matching}`),
 			);
 			process.exit(1);
 		}
-		console.log(chalk.green(`${theme.status.success} Default GJC definitions are installed`));
+		console.log(chalk.green(`${theme.status.success} Default GJC workflow skills are installed`));
 		console.log(chalk.dim(`Target: ${result.targetRoot}`));
 		return;
 	}
 
-	console.log(chalk.green(`${theme.status.success} Default GJC definitions installed`));
+	console.log(chalk.green(`${theme.status.success} Default GJC workflow skills installed`));
 	console.log(chalk.dim(`Target: ${result.targetRoot}`));
 	console.log(chalk.dim(`Written: ${result.written}; skipped: ${result.skipped}`));
 	if (result.skipped > 0 && !flags.force) {
-		console.log(chalk.dim("Use --force to overwrite existing default definition files."));
+		console.log(chalk.dim("Use --force to overwrite existing default workflow skill files."));
 	}
 }
 
@@ -371,29 +395,38 @@ async function handleSttSetup(flags: { json?: boolean; check?: boolean }): Promi
  * Print setup command help.
  */
 export function printSetupHelp(): void {
-	console.log(`${chalk.bold(`${APP_NAME} setup`)} - Install dependencies for optional features
+	console.log(`${chalk.bold(`${APP_NAME} setup`)} - Install GJC defaults or optional feature dependencies
 
 ${chalk.bold("Usage:")}
-  ${APP_NAME} setup <component> [options]
+  ${APP_NAME} setup [component] [options]
 
 ${chalk.bold("Components:")}
-  defaults  Install bundled GJC default skills and agents
-  hooks     Install GJC native Codex UserPromptSubmit/Stop skill-state hooks
-  provider  Add an OpenAI-compatible or Anthropic-compatible API provider
-  python    Verify a Python 3 interpreter is reachable for code execution
-  stt       Install speech-to-text dependencies (openai-whisper, recording tools)
+  defaults  Install bundled GJC default workflow skills (default)
+  hooks     Optional: install GJC native Codex UserPromptSubmit/Stop skill-state hooks
+  provider  Optional: add an OpenAI-compatible or Anthropic-compatible API provider
+  python    Optional: verify a Python 3 interpreter is reachable for code execution
+  stt       Optional: install speech-to-text dependencies (openai-whisper, recording tools)
+
 
 ${chalk.bold("Provider example:")}
   MY_PROVIDER_KEY=sk-... ${APP_NAME} setup provider --compat openai --provider my-oai --base-url https://api.example.com/v1 --api-key-env MY_PROVIDER_KEY --model gpt-example
 
 ${chalk.bold("Options:")}
-  -c, --check   Check if dependencies are installed without installing
-  -f, --force   Overwrite existing default definition files
-  --json        Output status as JSON
+  -c, --check       Check if dependencies are installed without installing
+  -f, --force       Overwrite existing default workflow skill files
+  --json            Output status as JSON
+  --compat          Provider compatibility: openai or anthropic
+  --provider        Provider id to add to models.yml
+  --base-url        Provider API base URL
+  --api-key         Provider API key
+  --api-key-env     Read provider API key from this environment variable
+  --model, --models Model id to add (repeat or comma-separate)
+  --models-path     Override models config path
 
 ${chalk.bold("Examples:")}
-  ${APP_NAME} setup defaults         Install bundled GJC defaults
-  ${APP_NAME} setup defaults --check Check bundled GJC defaults are installed
+  ${APP_NAME} setup                  Install bundled GJC default workflow skills
+  ${APP_NAME} setup defaults         Install bundled GJC default workflow skills explicitly
+  ${APP_NAME} setup defaults --check Check bundled GJC default workflow skills are installed
   ${APP_NAME} setup hooks            Install native Codex skill-state hooks
   ${APP_NAME} setup hooks --check    Check native Codex skill-state hooks
   ${APP_NAME} setup python           Install Python execution dependencies

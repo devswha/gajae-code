@@ -8,9 +8,11 @@ import {
 	installDefaultGjcDefinitions,
 } from "@gajae-code/coding-agent/defaults/gjc-defaults";
 import { loadSkills } from "@gajae-code/coding-agent/extensibility/skills";
+import { getBundledAgent } from "@gajae-code/coding-agent/task/agents";
 import { discoverAgents } from "@gajae-code/coding-agent/task/discovery";
 
 const tempRoots: string[] = [];
+const roleAgentNames = ["architect", "critic", "executor", "planner"] as const;
 
 async function makeTempRoot(): Promise<string> {
 	const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), "gjc-default-definitions-"));
@@ -18,87 +20,163 @@ async function makeTempRoot(): Promise<string> {
 	return tempRoot;
 }
 
+async function withTempHome<T>(fn: (home: string) => Promise<T>): Promise<T> {
+	const originalHome = process.env.HOME;
+	const home = await fs.mkdtemp(path.join(os.tmpdir(), "gjc-default-home-"));
+	tempRoots.push(home);
+	process.env.HOME = home;
+	try {
+		return await fn(home);
+	} finally {
+		if (originalHome === undefined) {
+			delete process.env.HOME;
+		} else {
+			process.env.HOME = originalHome;
+		}
+	}
+}
+
 afterEach(async () => {
 	await Promise.all(tempRoots.splice(0).map(root => fs.rm(root, { recursive: true, force: true })));
 });
 
 describe("default GJC definitions", () => {
-	it("bundles exactly the four default skills and four default agents as source assets", () => {
+	it("bundles exactly the four default workflow skills as installable source assets", () => {
 		const definitions = getDefaultGjcDefinitions();
-		const skills = definitions
-			.filter(definition => definition.kind === "skill")
-			.map(definition => definition.name)
-			.sort();
-		const agents = definitions
-			.filter(definition => definition.kind === "agent")
-			.map(definition => definition.name)
-			.sort();
+		const skills = definitions.map(definition => definition.name).sort();
 		const expected = [...DEFAULT_GJC_DEFINITION_NAMES].sort();
 
+		expect(definitions.every(definition => definition.kind === "skill")).toBe(true);
 		expect(skills).toEqual(expected);
-		expect(agents).toEqual(expected);
-		expect(definitions).toHaveLength(8);
+		expect(definitions).toHaveLength(4);
+		expect(definitions.every(definition => definition.relativePath.startsWith("skills/"))).toBe(true);
 		expect(definitions.every(definition => definition.content.includes(definition.name))).toBe(true);
 	});
 
-	it("keeps the four default agents bundled when project .gjc is absent", async () => {
-		const repoRoot = await makeTempRoot();
-		const agents = await discoverAgents(repoRoot, repoRoot);
-		const expected = [...DEFAULT_GJC_DEFINITION_NAMES].sort();
-		const bundledDefaults = agents.agents
-			.filter(agent => agent.source === "bundled" && expected.includes(agent.name as (typeof expected)[number]))
-			.map(agent => agent.name)
-			.sort();
-
-		expect(bundledDefaults).toEqual(expected);
-		expect(agents.projectAgentsDir).toBeNull();
-	});
-
-	it("makes installed project definitions discoverable by GJC skill and agent loaders", async () => {
-		const repoRoot = await makeTempRoot();
-		const projectGjcRoot = path.join(repoRoot, ".gjc");
-		await installDefaultGjcDefinitions({ targetRoot: projectGjcRoot });
-
-		const skills = await loadSkills({
-			cwd: repoRoot,
-			enabled: true,
-			enablePiProject: true,
-			enablePiUser: false,
-		});
-		const agents = await discoverAgents(repoRoot, repoRoot);
-		const expected = [...DEFAULT_GJC_DEFINITION_NAMES].sort();
-
-		expect(skills.skills.map(skill => skill.name).sort()).toEqual(expected);
-		expect(
-			agents.agents
-				.filter(agent => agent.source === "project")
+	it("keeps the four role agents bundled when project .gjc is absent", async () => {
+		await withTempHome(async home => {
+			const repoRoot = await makeTempRoot();
+			const agents = await discoverAgents(repoRoot, home);
+			const bundledRoleAgents = agents.agents
+				.filter(
+					agent =>
+						agent.source === "bundled" && roleAgentNames.includes(agent.name as (typeof roleAgentNames)[number]),
+				)
 				.map(agent => agent.name)
-				.sort(),
-		).toEqual(expected);
-		expect(agents.projectAgentsDir).toBe(path.join(projectGjcRoot, "agents"));
+				.sort();
+
+			expect(bundledRoleAgents).toEqual([...roleAgentNames].sort());
+			expect(agents.projectAgentsDir).toBeNull();
+		});
 	});
 
-	it("installs bundled definitions without overwriting local edits unless forced", async () => {
+	it("enforces role-agent tool boundaries through parsed frontmatter", () => {
+		const executor = getBundledAgent("executor");
+		const architect = getBundledAgent("architect");
+		const planner = getBundledAgent("planner");
+		const critic = getBundledAgent("critic");
+
+		expect(executor?.tools).toBeUndefined();
+		for (const agent of [architect, planner, critic]) {
+			expect(agent?.tools).toBeDefined();
+			expect(agent?.tools).toContain("yield");
+			expect(agent?.tools).not.toContain("edit");
+			expect(agent?.tools).not.toContain("write");
+			expect(agent?.tools).not.toContain("bash");
+		}
+		expect(architect?.systemPrompt).toContain("Architectural Status");
+		expect(architect?.systemPrompt).toContain("CRITICAL");
+		expect(architect?.systemPrompt).toContain("REQUEST CHANGES");
+		expect(planner?.systemPrompt).toContain("you do not implement");
+		expect(critic?.systemPrompt).toContain("OKAY");
+		expect(critic?.systemPrompt).toContain("REJECT");
+	});
+
+	it("makes installed project workflow skills discoverable without installing project agent stubs", async () => {
+		await withTempHome(async home => {
+			const repoRoot = await makeTempRoot();
+			const projectGjcRoot = path.join(repoRoot, ".gjc");
+			await installDefaultGjcDefinitions({ targetRoot: projectGjcRoot });
+
+			const skills = await loadSkills({
+				cwd: repoRoot,
+				enabled: true,
+				enablePiProject: true,
+				enablePiUser: false,
+			});
+			const agents = await discoverAgents(repoRoot, home);
+			const expected = [...DEFAULT_GJC_DEFINITION_NAMES].sort();
+
+			expect(skills.skills.map(skill => skill.name).sort()).toEqual(expected);
+			expect(
+				agents.agents
+					.filter(agent => agent.source === "project")
+					.map(agent => agent.name)
+					.sort(),
+			).toEqual([]);
+			expect(agents.projectAgentsDir).toBeNull();
+		});
+	});
+
+	it("preserves project .gjc agent overrides at runtime", async () => {
+		await withTempHome(async home => {
+			const repoRoot = await makeTempRoot();
+			const agentsDir = path.join(repoRoot, ".gjc", "agents");
+			await fs.mkdir(agentsDir, { recursive: true });
+			await Bun.write(
+				path.join(agentsDir, "executor.md"),
+				`---
+name: executor
+description: Project executor override.
+---
+Project executor override body.
+`,
+			);
+
+			const agents = await discoverAgents(repoRoot, home);
+			const executor = agents.agents.find(agent => agent.name === "executor");
+
+			expect(executor?.source).toBe("project");
+			expect(executor?.systemPrompt).toContain("Project executor override body");
+			expect(agents.projectAgentsDir).toBe(agentsDir);
+		});
+	});
+
+	it("documents role-agent delegation in system and ultragoal prompts", async () => {
+		const systemPrompt = await Bun.file("packages/coding-agent/src/prompts/system/system-prompt.md").text();
+		const ultragoal = await Bun.file("packages/coding-agent/src/defaults/gjc/skills/ultragoal/SKILL.md").text();
+
+		for (const name of roleAgentNames) {
+			expect(systemPrompt).toContain(name);
+			expect(ultragoal).toContain(name);
+		}
+		expect(systemPrompt).toContain("delegate bounded slices to `executor`");
+		expect(systemPrompt).toContain("committed repo-visible `.gjc` defaults are not the source of truth");
+		expect(ultragoal).toContain("run `ralplan` first");
+		expect(ultragoal).toContain("Role agents return implementation/review evidence");
+	});
+
+	it("installs bundled workflow skill definitions without overwriting local edits unless forced", async () => {
 		const targetRoot = await makeTempRoot();
 		const initial = await installDefaultGjcDefinitions({ targetRoot });
 		const deepInterviewSkillPath = path.join(targetRoot, "skills", "deep-interview", "SKILL.md");
 		const installedDeepInterview = await Bun.file(deepInterviewSkillPath).text();
 
-		expect(initial.written).toBe(8);
+		expect(initial.written).toBe(4);
 		expect(initial.skipped).toBe(0);
 
 		await Bun.write(deepInterviewSkillPath, "local edit");
 		const skipped = await installDefaultGjcDefinitions({ targetRoot });
 		expect(skipped.written).toBe(0);
-		expect(skipped.skipped).toBe(8);
+		expect(skipped.skipped).toBe(4);
 		expect(await Bun.file(deepInterviewSkillPath).text()).toBe("local edit");
 
 		const check = await installDefaultGjcDefinitions({ targetRoot, check: true });
 		expect(check.different).toBe(1);
-		expect(check.matching).toBe(7);
+		expect(check.matching).toBe(3);
 
 		const forced = await installDefaultGjcDefinitions({ targetRoot, force: true });
-		expect(forced.written).toBe(8);
+		expect(forced.written).toBe(4);
 		expect(await Bun.file(deepInterviewSkillPath).text()).toBe(installedDeepInterview);
 	});
 });

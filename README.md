@@ -1,6 +1,6 @@
 # Gajae-Code
 
-Gajae-Code (`gjc`) is a private MVP coding-agent CLI with a deliberately small workflow surface: four bundled skills and four matching agent definitions, all loaded from `.gjc`.
+Gajae-Code (`gjc`) is a private MVP coding-agent CLI with a deliberately small workflow surface: four source-bundled workflow skills plus four source-bundled role agents.
 
 It keeps the core coding-agent strengths—fast file/search tools, LSP-aware edits, native helpers, model-provider flexibility, and a terminal TUI—while removing broad inherited workflow sprawl from the default surface.
 
@@ -8,25 +8,25 @@ The default dark TUI identity is the GJC red-claw theme, with brand colors kept 
 
 ## Current MVP contract
 
-Default public workflow definitions are exactly:
+Default public workflow skills are exactly:
 
-| Skill / agent | Purpose | State/artifacts |
+| Skill | Purpose | State/artifacts |
 | --- | --- | --- |
 | `deep-interview` | Socratic requirements interview for ambiguous work. | `.gjc/specs/` |
 | `ralplan` | Consensus planning and approval before mutation. | `.gjc/plans/` |
 | `ultragoal` | Durable goal decomposition and checkpoint ledger. | `.gjc/ultragoal/` |
 | `team` | Tmux-backed parallel execution after approval. | `.gjc/state/team/` |
 
-Default definitions are stored in two places and must stay in sync:
+Default role agents are exactly `executor`, `architect`, `planner`, and `critic`. They are embedded from source prompt files and exposed through task delegation; projects may still provide local `.gjc/agents` overrides when needed.
+
+Default source definitions live under:
 
 ```text
-.gjc/skills/<name>/SKILL.md
-.gjc/agents/<name>.md
 packages/coding-agent/src/defaults/gjc/skills/<name>/SKILL.md
-packages/coding-agent/src/defaults/gjc/agents/<name>.md
+packages/coding-agent/src/prompts/agents/<role>.md
 ```
 
-GJC default skill loading accepts only `.gjc` definitions. Use `.gjc` for project-local runtime state, specs, plans, goals, and team coordination.
+GJC default skill loading always includes the source-bundled workflow skills, even when no project `.gjc` directory exists. Use `.gjc` for project-local runtime state, specs, plans, goals, team coordination, and optional local overrides.
 
 ## Install for local development
 
@@ -35,22 +35,22 @@ bun install
 bun run install:defaults
 ```
 
-`install:defaults` installs the four bundled GJC definitions into the active GJC config directory without overwriting local edits unless forced by the setup command.
+`install:defaults` installs the four bundled GJC workflow skills into the active GJC config directory without overwriting local edits unless forced by the setup command. Bare `gjc setup` does the same normal defaults install; hooks, provider, Python, and speech-to-text setup are optional explicit components.
 
 ## Run
 
 ```sh
 bun packages/coding-agent/src/cli.ts --help
-bun packages/coding-agent/src/cli.ts setup defaults --check --json
-bun packages/coding-agent/src/cli.ts setup defaults --json
+bun packages/coding-agent/src/cli.ts setup --check --json
+bun packages/coding-agent/src/cli.ts setup --json
 ```
 
 When installed globally, use `gjc`:
 
 ```sh
 gjc --help
-gjc setup defaults --check --json
-gjc setup defaults --json
+gjc setup --check --json
+gjc setup --json
 ```
 
 ## Workflow usage

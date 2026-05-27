@@ -77,6 +77,20 @@ Steering invariants:
 
 UserPromptSubmit uses the same steering API only for structured directives such as `GJC_ULTRAGOAL_STEER: { ... }`, `gjc.ultragoal.steer: { ... }`, or `gjc ultragoal steer: { ... }`. Normal prose does not mutate state, and repeated prompt-submit directives dedupe by prompt signature or idempotency key.
 
+
+## Role-agent delegation guidance
+
+Ultragoal execution should use GJC's bundled role-agent roster when a durable story is large enough to benefit from delegation:
+
+- Use `executor` for bounded implementation, refactoring, and fix slices.
+- Use `planner` for story sequencing or handoff refinement when execution uncovers a missing plan branch.
+- Use `architect` for read-only architecture and code-review lanes, including `CLEAR` / `WATCH` / `BLOCK` status.
+- Use `critic` for read-only plan or handoff critique before execution proceeds.
+
+If an Ultragoal request has no approved plan or consensus artifact, run `ralplan` first and preserve its PRD, test spec, role roster, and verification guidance in the Ultragoal ledger. Do not silently substitute ad-hoc execution for missing planning.
+
+The Ultragoal leader owns `.gjc/ultragoal/goals.json` and `.gjc/ultragoal/ledger.jsonl`. Role agents return implementation/review evidence; they do not checkpoint Ultragoal or mutate goal state.
+
 ## Use Ultragoal and Team together
 
 Use ultragoal and team together for a durable Ultragoal story that benefits from parallel execution. Ultragoal remains leader-owned: `.gjc/ultragoal/goals.json` stores the story plan and `.gjc/ultragoal/ledger.jsonl` stores checkpoints. Team is the parallel execution engine and returns task/evidence status to the leader.

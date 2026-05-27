@@ -5,13 +5,16 @@
  */
 import { Effort } from "@gajae-code/ai";
 import { parseFrontmatter, prompt } from "@gajae-code/utils";
-import { getDefaultGjcAgentDefinitions } from "../defaults/gjc-defaults";
 import { parseAgentFields } from "../discovery/helpers";
+import architectMd from "../prompts/agents/architect.md" with { type: "text" };
+import criticMd from "../prompts/agents/critic.md" with { type: "text" };
+import executorMd from "../prompts/agents/executor.md" with { type: "text" };
 import exploreMd from "../prompts/agents/explore.md" with { type: "text" };
 // Embed agent markdown files at build time
 import agentFrontmatterTemplate from "../prompts/agents/frontmatter.md" with { type: "text" };
 
 import planMd from "../prompts/agents/plan.md" with { type: "text" };
+import plannerMd from "../prompts/agents/planner.md" with { type: "text" };
 import reviewerMd from "../prompts/agents/reviewer.md" with { type: "text" };
 import taskMd from "../prompts/agents/task.md" with { type: "text" };
 
@@ -41,6 +44,10 @@ function buildAgentContent(def: EmbeddedAgentDef): string {
 }
 
 const EMBEDDED_AGENT_DEFS: EmbeddedAgentDef[] = [
+	{ fileName: "executor.md", template: executorMd },
+	{ fileName: "architect.md", template: architectMd },
+	{ fileName: "planner.md", template: plannerMd },
+	{ fileName: "critic.md", template: criticMd },
 	{ fileName: "explore.md", template: exploreMd },
 	{ fileName: "plan.md", template: planMd },
 	{ fileName: "reviewer.md", template: reviewerMd },
@@ -119,13 +126,10 @@ export function loadBundledAgents(): AgentDefinition[] {
 	if (bundledAgentsCache !== null) {
 		return bundledAgentsCache;
 	}
-	const defaultAgents = getDefaultGjcAgentDefinitions().map(definition =>
-		parseAgent(`embedded:gjc/${definition.relativePath}`, definition.content, "bundled"),
-	);
 	const utilityAgents = EMBEDDED_AGENT_DEFS.map(def =>
 		parseAgent(`embedded:${def.fileName}`, buildAgentContent(def), "bundled"),
 	);
-	bundledAgentsCache = [...defaultAgents, ...utilityAgents];
+	bundledAgentsCache = utilityAgents;
 	return bundledAgentsCache;
 }
 

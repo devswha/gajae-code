@@ -29,7 +29,8 @@ type MetadataViolation = {
 
 const repoRoot = process.cwd();
 
-const expectedVisibleDefinitions = ["deep-interview", "ralplan", "team", "ultragoal"] as const;
+const expectedBundledWorkflowSkills = ["deep-interview", "ralplan", "team", "ultragoal"] as const;
+const expectedBundledRoleAgents = ["architect", "critic", "executor", "planner"] as const;
 const expectedPackageScope = "@gajae-code/";
 const expectedCliBins = ["gjc", "gjc-stats", "gjc-swarm"] as const;
 const expectedRootPackageName = "gajae-code";
@@ -156,6 +157,16 @@ function listVisibleDefinitions(): VisibleDefinition[] {
 	].sort((a, b) => a.name.localeCompare(b.name) || a.path.localeCompare(b.path));
 }
 
+function listBundledWorkflowSkills(): VisibleDefinition[] {
+	return listSkillDirs("packages/coding-agent/src/defaults/gjc/skills").sort((a, b) => a.name.localeCompare(b.name) || a.path.localeCompare(b.path));
+}
+
+function listBundledRoleAgents(): VisibleDefinition[] {
+	return listDefinitionFiles("packages/coding-agent/src/prompts/agents", "agent", [".md"])
+		.filter(def => expectedBundledRoleAgents.includes(def.name as (typeof expectedBundledRoleAgents)[number]))
+		.sort((a, b) => a.name.localeCompare(b.name) || a.path.localeCompare(b.path));
+}
+
 function allowlistFor(filePath: string, line: string): string | undefined {
 	if (filePath === "package.json") return rootScriptAllowlistFor(line);
 	return legacyAllowlist.find(entry => entry.path.test(filePath))?.name;
@@ -220,9 +231,14 @@ function collectRootMetadataViolations(): MetadataViolation[] {
 
 const packages = listPackages();
 const visibleDefinitions = listVisibleDefinitions();
+const bundledWorkflowSkills = listBundledWorkflowSkills();
+const bundledRoleAgents = listBundledRoleAgents();
 const legacyHits = scanLegacyHits();
-const unexpectedDefinitions = visibleDefinitions.filter(def => !expectedVisibleDefinitions.includes(def.name as (typeof expectedVisibleDefinitions)[number]));
-const missingDefinitions = expectedVisibleDefinitions.filter(name => !visibleDefinitions.some(def => def.name === name));
+const unexpectedDefinitions = visibleDefinitions;
+const unexpectedBundledWorkflowSkills = bundledWorkflowSkills.filter(def => !expectedBundledWorkflowSkills.includes(def.name as (typeof expectedBundledWorkflowSkills)[number]));
+const unexpectedBundledRoleAgents = bundledRoleAgents.filter(def => !expectedBundledRoleAgents.includes(def.name as (typeof expectedBundledRoleAgents)[number]));
+const missingBundledWorkflowSkills = expectedBundledWorkflowSkills.filter(name => !bundledWorkflowSkills.some(def => def.name === name));
+const missingBundledRoleAgents = expectedBundledRoleAgents.filter(name => !bundledRoleAgents.some(def => def.name === name));
 const nonGajaePackages = packages.filter(pkg => pkg.name && !pkg.name.startsWith(expectedPackageScope));
 const observedBins = [...new Set(packages.flatMap(pkg => pkg.bins))].sort();
 const missingBins = expectedCliBins.filter(bin => !observedBins.includes(bin));
@@ -232,11 +248,15 @@ const rootMetadataViolations = collectRootMetadataViolations();
 const report = {
 	allowlists: {
 		cliBins: expectedCliBins,
+		bundledRoleAgents: expectedBundledRoleAgents,
+		bundledWorkflowSkills: expectedBundledWorkflowSkills,
 		legacyReferences: legacyAllowlist.map(entry => ({ name: entry.name, rationale: entry.rationale })),
 		packageScope: expectedPackageScope,
-		visibleDefinitions: expectedVisibleDefinitions,
+		visibleDefinitions: [],
 	},
 	inventory: {
+		bundledRoleAgents,
+		bundledWorkflowSkills,
 		legacyHits: {
 			allowlisted: legacyHits.length - unexpectedLegacyHits.length,
 			unexpected: unexpectedLegacyHits.slice(0, 50),
@@ -246,9 +266,12 @@ const report = {
 	},
 	violations: {
 		missingBins,
-		missingDefinitions,
+		missingBundledRoleAgents,
+		missingBundledWorkflowSkills,
 		nonGajaePackages,
 		rootMetadataViolations,
+		unexpectedBundledRoleAgents,
+		unexpectedBundledWorkflowSkills,
 		unexpectedDefinitions,
 		unexpectedLegacyHitCount: unexpectedLegacyHits.length,
 	},
@@ -264,6 +287,8 @@ if (process.argv.includes("--json")) {
 		JSON.stringify(
 			{
 				legacyHits: report.inventory.legacyHits,
+				bundledRoleAgents: bundledRoleAgents.map(def => `${def.type}:${def.name}`),
+				bundledWorkflowSkills: bundledWorkflowSkills.map(def => `${def.type}:${def.name}`),
 				packageCount: packages.length,
 				visibleDefinitions: visibleDefinitions.map(def => `${def.type}:${def.name}`),
 				violations: report.violations,
@@ -277,9 +302,12 @@ if (process.argv.includes("--json")) {
 if (process.argv.includes("--strict")) {
 	const hasViolation =
 		missingBins.length > 0 ||
-		missingDefinitions.length > 0 ||
+		missingBundledRoleAgents.length > 0 ||
+		missingBundledWorkflowSkills.length > 0 ||
 		nonGajaePackages.length > 0 ||
 		rootMetadataViolations.length > 0 ||
+		unexpectedBundledRoleAgents.length > 0 ||
+		unexpectedBundledWorkflowSkills.length > 0 ||
 		unexpectedDefinitions.length > 0 ||
 		unexpectedLegacyHits.length > 0;
 	if (hasViolation) process.exit(1);

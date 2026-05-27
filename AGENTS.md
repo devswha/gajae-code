@@ -4,25 +4,29 @@ Gajae-Code (`gjc`) is this repository's coding-agent implementation. Treat this 
 
 ## Public workflow surface
 
-GJC intentionally exposes exactly four default skills and four matching agent definitions. Do not add, document, install, or route to additional default workflow definitions without an explicit product decision and gate update.
+GJC intentionally exposes exactly four default workflow skills. Do not add, document, install, or route to additional default workflow definitions without an explicit product decision and gate update. GJC also bundles exactly four source-defined task role agents for delegation; these are not workflow skills and are not committed repo-visible `.gjc` defaults.
 
-| Surface | Purpose | Default files |
+| Workflow skill | Purpose | Bundled source file |
 | --- | --- | --- |
-| `deep-interview` | Socratic requirements interview; writes approved specs under `.gjc/specs/`. | `.gjc/skills/deep-interview/SKILL.md`, `.gjc/agents/deep-interview.md` |
-| `ralplan` | Consensus planning and approval gate; writes plans under `.gjc/plans/`. | `.gjc/skills/ralplan/SKILL.md`, `.gjc/agents/ralplan.md` |
-| `ultragoal` | Durable multi-goal execution ledger under `.gjc/ultragoal/`. | `.gjc/skills/ultragoal/SKILL.md`, `.gjc/agents/ultragoal.md` |
-| `team` | Tmux-backed parallel execution using `.gjc/state/team/`. | `.gjc/skills/team/SKILL.md`, `.gjc/agents/team.md` |
+| `deep-interview` | Socratic requirements interview; writes approved specs under `.gjc/specs/`. | `packages/coding-agent/src/defaults/gjc/skills/deep-interview/SKILL.md` |
+| `ralplan` | Consensus planning and approval gate; writes plans under `.gjc/plans/`. | `packages/coding-agent/src/defaults/gjc/skills/ralplan/SKILL.md` |
+| `ultragoal` | Durable multi-goal execution ledger under `.gjc/ultragoal/`. | `packages/coding-agent/src/defaults/gjc/skills/ultragoal/SKILL.md` |
+| `team` | Tmux-backed parallel execution using `.gjc/state/team/`. | `packages/coding-agent/src/defaults/gjc/skills/team/SKILL.md` |
+
+| Role agent | Purpose | Bundled source file |
+| --- | --- | --- |
+| `executor` | Bounded implementation/fix/refactor tasks. | `packages/coding-agent/src/prompts/agents/executor.md` |
+| `architect` | Read-only architecture and code-review lane. | `packages/coding-agent/src/prompts/agents/architect.md` |
+| `planner` | Read-only sequencing and handoff planning lane. | `packages/coding-agent/src/prompts/agents/planner.md` |
+| `critic` | Read-only plan critique and actionability review. | `packages/coding-agent/src/prompts/agents/critic.md` |
 
 Rules:
-- Load default skills and agents only from `.gjc/skills` and `.gjc/agents`.
-- Only `.gjc/skills` and `.gjc/agents` are valid for the GJC default surface; do not load workflow definitions from any other hidden tool directory.
+- Bundled default workflow skills load from `packages/coding-agent/src/defaults/gjc/skills`.
+- Bundled role agents load from `packages/coding-agent/src/prompts/agents`.
+- Do not commit repo-visible `.gjc` default definitions; runtime user/project `.gjc` discovery remains supported for local overrides and installed configs.
 - Runtime state, plans, specs, and workflow ledgers belong under `.gjc/`.
 - Preserve upstream attribution in source comments/docs where appropriate, but public commands, paths, and examples must use `gjc` and `.gjc`.
-- Keep the bundled default definitions in sync with the visible definitions:
-  - `.gjc/skills/**/SKILL.md`
-  - `.gjc/agents/*.md`
-  - `packages/coding-agent/src/defaults/gjc/skills/**/SKILL.md`
-  - `packages/coding-agent/src/defaults/gjc/agents/*.md`
+- Keep source-bundled workflow skills and role agents in sync with tests/gates; do not rely on committed `.gjc` copies.
 
 ## Workflow routing
 

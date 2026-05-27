@@ -13,6 +13,7 @@ import * as path from "node:path";
 
 const repoRoot = path.join(import.meta.dir, "..");
 const EXPECTED_DEFINITIONS = ["deep-interview", "ralplan", "team", "ultragoal"] as const;
+const EXPECTED_ROLE_AGENTS = ["architect", "critic", "executor", "planner"] as const;
 const EXPECTED_PUBLIC_PACKAGE_VERSION = "0.1.0";
 const ALLOWED_PRIVATE_PACKAGE_VERSIONS = new Map<string, string>([["@gajae-code/typescript-edit-benchmark", "0.0.1"]]);
 const ALLOWED_PACKAGE_BINARIES = new Map<string, readonly string[]>([
@@ -248,59 +249,42 @@ async function verifyPackageVersionAndBinaryAllowlist(): Promise<GateResult> {
 }
 
 async function verifyVisibleDefinitions(): Promise<GateResult> {
-	const skillRoots = [".gjc/skills"];
-	const agentRoots = [".gjc/agents"];
-	const otherDefinitionRoots = [".gjc/commands", ".gjc/rules"];
-	const skillDefinitions = new Set<string>();
-	const agentDefinitions = new Set<string>();
+	const otherDefinitionRoots = [".gjc/skills", ".gjc/agents", ".gjc/commands", ".gjc/rules"];
 	const otherDefinitions: string[] = [];
 	const details: string[] = [];
 	const bundledSkills = readVisibleEntries("packages/coding-agent/src/defaults/gjc/skills").filter(entry =>
 		fs.existsSync(path.join(repoRoot, "packages/coding-agent/src/defaults/gjc/skills", entry, "SKILL.md")),
 	);
-	const bundledAgents = readVisibleEntries("packages/coding-agent/src/defaults/gjc/agents");
+	const bundledRoleAgents = readVisibleEntries("packages/coding-agent/src/prompts/agents").filter(entry =>
+		EXPECTED_ROLE_AGENTS.includes(entry as (typeof EXPECTED_ROLE_AGENTS)[number]),
+	);
 
-	for (const root of skillRoots) {
-		const entries = readVisibleEntries(root).filter(entry => fs.existsSync(path.join(repoRoot, root, entry, "SKILL.md")));
-		for (const entry of entries) skillDefinitions.add(entry);
-		details.push(`${root}: ${entries.join(", ") || "<empty/absent>"}`);
-	}
-	for (const root of agentRoots) {
-		const entries = readVisibleEntries(root);
-		for (const entry of entries) agentDefinitions.add(entry);
-		details.push(`${root}: ${entries.join(", ") || "<empty/absent>"}`);
-	}
 	for (const root of otherDefinitionRoots) {
 		const entries = readVisibleEntries(root);
 		for (const entry of entries) otherDefinitions.push(`${root}/${entry}`);
 		details.push(`${root}: ${entries.join(", ") || "<empty/absent>"}`);
 	}
 
-	const expected = [...EXPECTED_DEFINITIONS].sort();
-	const skills = [...skillDefinitions].sort();
-	const agents = [...agentDefinitions].sort();
+	const expectedSkills = [...EXPECTED_DEFINITIONS].sort();
+	const expectedRoleAgents = [...EXPECTED_ROLE_AGENTS].sort();
+	const skills = [...bundledSkills].sort();
+	const roleAgents = [...bundledRoleAgents].sort();
 	const ignoredDefinitions = getIgnoredDefinitionPaths([
-		...expected.map(name => `.gjc/skills/${name}/SKILL.md`),
-		...expected.map(name => `.gjc/agents/${name}.md`),
-		...expected.map(name => `packages/coding-agent/src/defaults/gjc/skills/${name}/SKILL.md`),
-		...expected.map(name => `packages/coding-agent/src/defaults/gjc/agents/${name}.md`),
+		...expectedSkills.map(name => `packages/coding-agent/src/defaults/gjc/skills/${name}/SKILL.md`),
+		...expectedRoleAgents.map(name => `packages/coding-agent/src/prompts/agents/${name}.md`),
 	]);
-	details.push(`expected skills: ${expected.join(", ")}`);
-	details.push(`actual skills: ${skills.join(", ") || "<none>"}`);
-	details.push(`expected agents: ${expected.join(", ")}`);
-	details.push(`actual agents: ${agents.join(", ") || "<none>"}`);
-	details.push(`bundled source skills: ${bundledSkills.join(", ") || "<none>"}`);
-	details.push(`bundled source agents: ${bundledAgents.join(", ") || "<none>"}`);
-	details.push(`other visible definitions: ${otherDefinitions.join(", ") || "<none>"}`);
+	details.push(`expected bundled workflow skills: ${expectedSkills.join(", ")}`);
+	details.push(`actual bundled workflow skills: ${skills.join(", ") || "<none>"}`);
+	details.push(`expected bundled role agents: ${expectedRoleAgents.join(", ")}`);
+	details.push(`actual bundled role agents: ${roleAgents.join(", ") || "<none>"}`);
+	details.push(`repo-visible .gjc definitions: ${otherDefinitions.join(", ") || "<none>"}`);
 	details.push(`gitignored default definitions: ${ignoredDefinitions.join(", ") || "<none>"}`);
 
 	return {
-		name: "exact four visible and bundled skill and agent definitions",
+		name: "bundled workflow skills and source role-agent definitions",
 		passed:
-			arraysEqual(skills, expected) &&
-			arraysEqual(agents, expected) &&
-			arraysEqual(bundledSkills, expected) &&
-			arraysEqual(bundledAgents, expected) &&
+			arraysEqual(skills, expectedSkills) &&
+			arraysEqual(roleAgents, expectedRoleAgents) &&
 			otherDefinitions.length === 0 &&
 			ignoredDefinitions.length === 0,
 		details,
@@ -329,17 +313,25 @@ function getIgnoredDefinitionPaths(paths: readonly string[]): string[] {
 async function verifyPublicDefinitionContent(): Promise<GateResult> {
 	const findings: string[] = [];
 	for (const definition of EXPECTED_DEFINITIONS) {
-		const relativePath = `.gjc/skills/${definition}/SKILL.md`;
+		const relativePath = `packages/coding-agent/src/defaults/gjc/skills/${definition}/SKILL.md`;
 		const text = await readText(relativePath);
+		for (const pattern of FORBIDDEN_SKILL_PATTERNS) {
+			if (pattern.test(text)) findings.push(`${relativePath}: ${pattern.source}`);
+		}
+	}
+	for (const agent of EXPECTED_ROLE_AGENTS) {
+		const relativePath = `packages/coding-agent/src/prompts/agents/${agent}.md`;
+		const text = await readText(relativePath);
+		if (/\bomx\b/iu.test(text)) findings.push(`${relativePath}: contains OMX runtime naming`);
 		for (const pattern of FORBIDDEN_SKILL_PATTERNS) {
 			if (pattern.test(text)) findings.push(`${relativePath}: ${pattern.source}`);
 		}
 	}
 
 	return {
-		name: "approved public skill content",
+		name: "approved bundled workflow skill and role-agent content",
 		passed: findings.length === 0,
-		details: [`forbidden public skill references: ${findings.join(", ") || "<none>"}`],
+		details: [`forbidden bundled source references: ${findings.join(", ") || "<none>"}`],
 	};
 }
 
@@ -357,14 +349,14 @@ async function verifyBroadWorkflowExposure(): Promise<GateResult> {
 		const absolute = path.join(repoRoot, root);
 		if (!fs.existsSync(absolute)) continue;
 		for (const entry of fs.readdirSync(absolute, { withFileTypes: true })) {
-			const visibleName = entry.name.replace(/\.(md|toml)$/u, "");
-			if (!EXPECTED_DEFINITIONS.includes(visibleName as (typeof EXPECTED_DEFINITIONS)[number])) {
-				findings.push(`${root}/${entry.name}: unexpected public definition`);
-			}
+			findings.push(`${root}/${entry.name}: repo-visible default definitions should not be committed`);
 		}
 	}
 
-	const activeSkillTexts = EXPECTED_DEFINITIONS.map(definition => [`.gjc/skills/${definition}/SKILL.md`, fs.readFileSync(path.join(repoRoot, `.gjc/skills/${definition}/SKILL.md`), "utf8")] as const);
+	const activeSkillTexts = EXPECTED_DEFINITIONS.map(definition => {
+		const relativePath = `packages/coding-agent/src/defaults/gjc/skills/${definition}/SKILL.md`;
+		return [relativePath, fs.readFileSync(path.join(repoRoot, relativePath), "utf8")] as const;
+	});
 	for (const [relativePath, text] of activeSkillTexts) {
 		for (const token of FORBIDDEN_WORKFLOW_SURFACE_TOKENS) {
 			const pattern = new RegExp(`(?:\\$|\\bgjc\\s+|\\bomx\\s+)${escapeRegExp(token)}\\b`, "u");

@@ -1,9 +1,5 @@
 import * as path from "node:path";
 import { getAgentDir, isEnoent, parseFrontmatter } from "@gajae-code/utils";
-import deepInterviewAgent from "./gjc/agents/deep-interview.md" with { type: "text" };
-import ralplanAgent from "./gjc/agents/ralplan.md" with { type: "text" };
-import teamAgent from "./gjc/agents/team.md" with { type: "text" };
-import ultragoalAgent from "./gjc/agents/ultragoal.md" with { type: "text" };
 import deepInterviewSkill from "./gjc/skills/deep-interview/SKILL.md" with { type: "text" };
 import ralplanSkill from "./gjc/skills/ralplan/SKILL.md" with { type: "text" };
 import teamSkill from "./gjc/skills/team/SKILL.md" with { type: "text" };
@@ -11,7 +7,7 @@ import ultragoalSkill from "./gjc/skills/ultragoal/SKILL.md" with { type: "text"
 
 export const DEFAULT_GJC_DEFINITION_NAMES = ["deep-interview", "ralplan", "team", "ultragoal"] as const;
 export type DefaultGjcDefinitionName = (typeof DEFAULT_GJC_DEFINITION_NAMES)[number];
-export type DefaultGjcDefinitionKind = "agent" | "skill";
+export type DefaultGjcDefinitionKind = "skill";
 export type EmbeddedDefaultGjcSkill = {
 	name: DefaultGjcDefinitionName;
 	description: string;
@@ -55,10 +51,6 @@ export interface DefaultGjcDefinitionInstallResult {
 }
 
 const DEFAULT_GJC_DEFINITIONS: readonly DefaultGjcDefinition[] = [
-	{ kind: "agent", name: "deep-interview", relativePath: "agents/deep-interview.md", content: deepInterviewAgent },
-	{ kind: "agent", name: "ralplan", relativePath: "agents/ralplan.md", content: ralplanAgent },
-	{ kind: "agent", name: "team", relativePath: "agents/team.md", content: teamAgent },
-	{ kind: "agent", name: "ultragoal", relativePath: "agents/ultragoal.md", content: ultragoalAgent },
 	{
 		kind: "skill",
 		name: "deep-interview",
@@ -75,7 +67,7 @@ export function getDefaultGjcDefinitions(): readonly DefaultGjcDefinition[] {
 }
 
 export function getDefaultGjcAgentDefinitions(): readonly DefaultGjcDefinition[] {
-	return DEFAULT_GJC_DEFINITIONS.filter(definition => definition.kind === "agent");
+	return [];
 }
 
 export function getEmbeddedDefaultGjcSkills(): EmbeddedDefaultGjcSkill[] {

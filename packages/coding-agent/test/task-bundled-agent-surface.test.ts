@@ -12,11 +12,31 @@ function extractEmbeddedAgentFileNames(source: string): string[] {
 }
 
 describe("GJC bundled task agent surface", () => {
-	it("ships only the retained four internal agent definitions", async () => {
+	it("ships four visible role agents plus retained hidden support agents", async () => {
 		const source = await Bun.file(agentsEntry).text();
-		expect(extractEmbeddedAgentFileNames(source)).toEqual(["explore.md", "plan.md", "reviewer.md", "task.md"]);
+		expect(extractEmbeddedAgentFileNames(source)).toEqual([
+			"architect.md",
+			"critic.md",
+			"executor.md",
+			"explore.md",
+			"plan.md",
+			"planner.md",
+			"reviewer.md",
+			"task.md",
+		]);
 
 		const promptFiles = Array.from(new Bun.Glob("*.md").scanSync({ cwd: promptsDir })).sort();
-		expect(promptFiles).toEqual(["explore.md", "frontmatter.md", "init.md", "plan.md", "reviewer.md", "task.md"]);
+		expect(promptFiles).toEqual([
+			"architect.md",
+			"critic.md",
+			"executor.md",
+			"explore.md",
+			"frontmatter.md",
+			"init.md",
+			"plan.md",
+			"planner.md",
+			"reviewer.md",
+			"task.md",
+		]);
 	});
 });

@@ -1,18 +1,18 @@
 /**
- * Install dependencies for optional features.
+ * Install GJC defaults or optional feature dependencies.
  */
-import { Args, Command, Flags, renderCommandHelp } from "@gajae-code/utils/cli";
+import { Args, Command, Flags } from "@gajae-code/utils/cli";
 import { runSetupCommand, type SetupCommandArgs, type SetupComponent } from "../cli/setup-cli";
 import { initTheme } from "../modes/theme/theme";
 
 const COMPONENTS: SetupComponent[] = ["defaults", "hooks", "provider", "python", "stt"];
 
 export default class Setup extends Command {
-	static description = "Install dependencies for optional features";
+	static description = "Install GJC defaults or optional feature dependencies";
 
 	static args = {
 		component: Args.string({
-			description: "Component to install",
+			description: "Component to install (defaults when omitted)",
 			required: false,
 			options: COMPONENTS,
 		}),
@@ -20,7 +20,7 @@ export default class Setup extends Command {
 
 	static flags = {
 		check: Flags.boolean({ char: "c", description: "Check if dependencies are installed" }),
-		force: Flags.boolean({ char: "f", description: "Overwrite existing default definition files" }),
+		force: Flags.boolean({ char: "f", description: "Overwrite existing default workflow skill files" }),
 		json: Flags.boolean({ description: "Output status as JSON" }),
 		compat: Flags.string({ description: "Provider compatibility: openai or anthropic" }),
 		provider: Flags.string({ description: "Provider id to add to models.yml" }),
@@ -33,12 +33,8 @@ export default class Setup extends Command {
 
 	async run(): Promise<void> {
 		const { args, flags } = await this.parse(Setup);
-		if (!args.component) {
-			renderCommandHelp("gjc", "setup", Setup);
-			return;
-		}
 		const cmd: SetupCommandArgs = {
-			component: args.component as SetupComponent,
+			component: (args.component ?? "defaults") as SetupComponent,
 			flags: {
 				json: flags.json,
 				check: flags.check,

@@ -2,7 +2,8 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 
-const expected = ["deep-interview", "ralplan", "team", "ultragoal"];
+const expectedWorkflowSkills = ["deep-interview", "ralplan", "team", "ultragoal"];
+const expectedRoleAgents = ["architect", "critic", "executor", "planner"];
 const repoRoot = process.cwd();
 
 function listSkillDirs(dir: string): string[] {
@@ -28,55 +29,45 @@ function listDefinitionFiles(dir: string, extensions: readonly string[]): string
 
 const visibleSkills = listSkillDirs(".gjc/skills").sort();
 const visibleAgents = listDefinitionFiles(".gjc/agents", [".md", ".toml"]).sort();
-const bundledSkills = listSkillDirs("packages/coding-agent/src/defaults/gjc/skills").sort();
-const bundledAgents = listDefinitionFiles("packages/coding-agent/src/defaults/gjc/agents", [".md"]).sort();
 const otherVisibleDefinitions = [
 	...listDefinitionFiles(".gjc/commands", [".md"]),
 	...listDefinitionFiles(".gjc/rules", [".md"]),
 ].sort();
-const visible = [...visibleSkills, ...visibleAgents, ...otherVisibleDefinitions].sort();
-
-const unexpected = visible.filter(name => !expected.includes(name));
-const missingSkills = expected.filter(name => !visibleSkills.includes(name));
-const missingAgents = expected.filter(name => !visibleAgents.includes(name));
-const missingBundledSkills = expected.filter(name => !bundledSkills.includes(name));
-const missingBundledAgents = expected.filter(name => !bundledAgents.includes(name));
+const bundledSkills = listSkillDirs("packages/coding-agent/src/defaults/gjc/skills").sort();
+const bundledRoleAgents = listDefinitionFiles("packages/coding-agent/src/prompts/agents", [".md"])
+	.filter(name => expectedRoleAgents.includes(name))
+	.sort();
+const unexpectedVisible = [...visibleSkills, ...visibleAgents, ...otherVisibleDefinitions].sort();
+const missingBundledSkills = expectedWorkflowSkills.filter(name => !bundledSkills.includes(name));
+const missingRoleAgents = expectedRoleAgents.filter(name => !bundledRoleAgents.includes(name));
 const ignoredDefinitions = getIgnoredDefinitionPaths([
-	...expected.map(name => `.gjc/skills/${name}/SKILL.md`),
-	...expected.map(name => `.gjc/agents/${name}.md`),
-	...expected.map(name => `packages/coding-agent/src/defaults/gjc/skills/${name}/SKILL.md`),
-	...expected.map(name => `packages/coding-agent/src/defaults/gjc/agents/${name}.md`),
+	...expectedWorkflowSkills.map(name => `packages/coding-agent/src/defaults/gjc/skills/${name}/SKILL.md`),
+	...expectedRoleAgents.map(name => `packages/coding-agent/src/prompts/agents/${name}.md`),
 ]);
 
 if (
-	unexpected.length > 0 ||
-	missingSkills.length > 0 ||
-	missingAgents.length > 0 ||
+	unexpectedVisible.length > 0 ||
 	missingBundledSkills.length > 0 ||
-	missingBundledAgents.length > 0 ||
+	missingRoleAgents.length > 0 ||
 	ignoredDefinitions.length > 0 ||
-	visibleSkills.length !== expected.length ||
-	visibleAgents.length !== expected.length ||
-	bundledSkills.length !== expected.length ||
-	bundledAgents.length !== expected.length ||
-	otherVisibleDefinitions.length !== 0
+	bundledSkills.length !== expectedWorkflowSkills.length ||
+	bundledRoleAgents.length !== expectedRoleAgents.length
 ) {
-	console.error("Visible definitions mismatch");
+	console.error("Default surface definitions mismatch");
 	console.error(
 		JSON.stringify(
 			{
-				expected,
+				expectedWorkflowSkills,
+				expectedRoleAgents,
 				visibleSkills,
 				visibleAgents,
-				bundledSkills,
-				bundledAgents,
 				otherVisibleDefinitions,
-				missingSkills,
-				missingAgents,
+				bundledSkills,
+				bundledRoleAgents,
 				missingBundledSkills,
-				missingBundledAgents,
+				missingRoleAgents,
 				ignoredDefinitions,
-				unexpected,
+				unexpectedVisible,
 			},
 			null,
 			2,
@@ -86,7 +77,7 @@ if (
 }
 
 console.log(
-	`Visible definitions OK: skills=${visibleSkills.join(", ")} agents=${visibleAgents.join(", ")} bundled=${bundledSkills.join(", ")}`,
+	`Default surface OK: bundled workflow skills=${bundledSkills.join(", ")} bundled role agents=${bundledRoleAgents.join(", ")}`,
 );
 
 function getIgnoredDefinitionPaths(paths: string[]): string[] {

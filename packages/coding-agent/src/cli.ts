@@ -33,11 +33,11 @@ const commands: CommandEntry[] = [
 	{ name: "codex-native-hook", load: () => import("./commands/codex-native-hook").then(m => m.default) },
 	{ name: "question", load: () => import("./commands/question").then(m => m.default) },
 	{ name: "state", load: () => import("./commands/state").then(m => m.default) },
+	{ name: "setup", load: () => import("./commands/setup").then(m => m.default) },
 	{ name: "team", load: () => import("./commands/team").then(m => m.default) },
 	{ name: "ultragoal", load: () => import("./commands/ultragoal").then(m => m.default) },
 	{ name: "ralplan", load: () => import("./commands/ralplan").then(m => m.default) },
 	{ name: "deep-interview", load: () => import("./commands/deep-interview").then(m => m.default) },
-	{ name: "setup", load: () => import("./commands/setup").then(m => m.default) },
 	{ name: "launch", load: () => import("./commands/launch").then(m => m.default) },
 ];
 
