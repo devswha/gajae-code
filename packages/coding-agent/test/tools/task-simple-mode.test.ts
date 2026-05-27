@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "bun:test";
 import { toolWireSchema } from "@gajae-code/ai/utils/schema";
 import { validateToolArguments } from "@gajae-code/ai/utils/validation";
+import { AsyncJobManager, type AsyncJobRegisterOptions } from "../../src/async";
 import { Settings } from "../../src/config/settings";
 import { TaskTool } from "../../src/task";
 import * as discoveryModule from "../../src/task/discovery";
@@ -14,7 +15,20 @@ const TEST_AGENTS = [
 		systemPrompt: "You are a task agent.",
 		source: "bundled" as const,
 	},
+	{
+		name: "reviewer",
+		description: "Reviewer task agent",
+		systemPrompt: "You are a reviewer.",
+		source: "bundled" as const,
+		blocking: true,
+	},
 ];
+
+type CapturedRegister = {
+	type: "bash" | "task";
+	label: string;
+	options?: AsyncJobRegisterOptions;
+};
 
 function createSession(overrides: Partial<Record<string, unknown>> = {}): ToolSession {
 	return {
@@ -39,6 +53,7 @@ function getFirstText(result: { content: Array<{ type: string; text?: string }> 
 describe("task.simple", () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
+		AsyncJobManager.resetForTests();
 	});
 
 	it("removes only the custom schema input in schema-free mode", async () => {
@@ -118,5 +133,62 @@ describe("task.simple", () => {
 		});
 		const validatedIndependentResult = await independentTool.execute("tool-2-validated", validatedIndependentParams);
 		expect(getFirstText(validatedIndependentResult)).toContain("does not accept `context`");
+	});
+
+	it("launches task subagents detached even when async.enabled is false or the agent has blocking metadata", async () => {
+		vi.spyOn(discoveryModule, "discoverAgents").mockResolvedValue({
+			agents: TEST_AGENTS,
+			projectAgentsDir: null,
+		});
+		const captured: CapturedRegister[] = [];
+		const manager = {
+			register: (
+				type: "bash" | "task",
+				label: string,
+				_run: (ctx: {
+					jobId: string;
+					signal: AbortSignal;
+					reportProgress: (text: string, details?: Record<string, unknown>) => Promise<void>;
+				}) => Promise<string>,
+				options?: AsyncJobRegisterOptions,
+			): string => {
+				captured.push({ type, label, options });
+				return options?.id ?? label;
+			},
+		};
+		AsyncJobManager.setInstance(manager as unknown as AsyncJobManager);
+
+		const tool = await TaskTool.create(createSession({ "async.enabled": false }));
+		const result = await tool.execute("tool-detached", {
+			agent: "task",
+			tasks: [{ id: "One", description: "label", assignment: "Do detached work." }],
+		} as TaskParams);
+
+		expect(captured).toHaveLength(1);
+		expect(captured[0]?.type).toBe("task");
+		expect(captured[0]?.options?.metadata?.subagent).toMatchObject({
+			agent: "task",
+			agentSource: "bundled",
+			description: "label",
+			assignment: "Do detached work.",
+		});
+		expect(result.details?.async?.state).toBe("running");
+		expect(getFirstText(result)).toContain("Started 1 background task job");
+		expect(getFirstText(result)).toContain("`subagent`");
+
+		const blockingResult = await tool.execute("tool-detached-blocking", {
+			agent: "reviewer",
+			tasks: [{ id: "Two", description: "review label", assignment: "Review detached work." }],
+		} as TaskParams);
+
+		expect(captured).toHaveLength(2);
+		expect(captured[1]?.type).toBe("task");
+		expect(captured[1]?.options?.metadata?.subagent).toMatchObject({
+			agent: "reviewer",
+			agentSource: "bundled",
+			description: "review label",
+			assignment: "Review detached work.",
+		});
+		expect(blockingResult.details?.async?.state).toBe("running");
 	});
 });

@@ -244,13 +244,11 @@ function maybeExtractEmbeddedAddon(ctx, errors) {
 		return null;
 	}
 
-	if (fs.existsSync(targetPath)) {
-		return targetPath;
-	}
-
 	try {
 		const buffer = fs.readFileSync(selectedEmbeddedFile.filePath);
-		fs.writeFileSync(targetPath, buffer);
+		const tempPath = `${targetPath}.tmp.${process.pid}`;
+		fs.writeFileSync(tempPath, buffer);
+		fs.renameSync(tempPath, targetPath);
 		return targetPath;
 	} catch (err) {
 		const message = err instanceof Error ? err.message : String(err);

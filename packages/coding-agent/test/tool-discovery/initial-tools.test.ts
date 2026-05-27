@@ -65,6 +65,18 @@ describe("BUILTIN_TOOLS public factory map", () => {
 		const missing = Object.keys(BUILTIN_TOOLS).filter(name => metadata.get(name)?.loadMode === undefined);
 		expect(missing).toEqual([]);
 	});
+
+	it("exposes detached subagent controls and keeps generic job controls without async flags", async () => {
+		const session = {
+			...toolSession,
+			settings: Settings.isolated({ "async.enabled": false, "bash.autoBackground.enabled": false }),
+		};
+
+		const tools = await createTools(session, ["subagent", "job"]);
+
+		expect(tools.some(tool => tool.name === "job")).toBe(true);
+		expect(tools.some(tool => tool.name === "subagent")).toBe(true);
+	});
 });
 
 describe("built-in tool loadMode annotations", () => {

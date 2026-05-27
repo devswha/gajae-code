@@ -1,4 +1,5 @@
 import { logger } from "@gajae-code/utils";
+import type { AgentSource } from "../task/types";
 
 const DELIVERY_RETRY_BASE_MS = 500;
 const DELIVERY_RETRY_MAX_MS = 30_000;
@@ -16,6 +17,7 @@ export interface AsyncJob {
 	promise: Promise<void>;
 	resultText?: string;
 	errorText?: string;
+	metadata?: AsyncJobMetadata;
 	/**
 	 * Registry id of the agent that registered the job (e.g. "0-Main",
 	 * "3-AuthLoader"). Used by scoped cancel/list APIs so a subagent's teardown
@@ -23,6 +25,16 @@ export interface AsyncJob {
 	 * supply an id (e.g. legacy tests, SDK consumers without an agent context).
 	 */
 	ownerId?: string;
+}
+
+export interface AsyncJobMetadata {
+	subagent?: {
+		id: string;
+		agent: string;
+		agentSource: AgentSource;
+		description?: string;
+		assignment?: string;
+	};
 }
 
 export interface AsyncJobManagerOptions {
@@ -52,6 +64,8 @@ export interface AsyncJobRegisterOptions {
 	id?: string;
 	/** Registry id of the agent that owns this job; used to scope cancelAll. */
 	ownerId?: string;
+	/** Structured metadata for tool-specific control surfaces. */
+	metadata?: AsyncJobMetadata;
 	onProgress?: (text: string, details?: Record<string, unknown>) => void | Promise<void>;
 }
 
@@ -144,6 +158,7 @@ export class AsyncJobManager {
 			abortController,
 			promise: Promise.resolve(),
 			ownerId: options?.ownerId,
+			metadata: options?.metadata,
 		};
 
 		const reportProgress = async (text: string, details?: Record<string, unknown>): Promise<void> => {

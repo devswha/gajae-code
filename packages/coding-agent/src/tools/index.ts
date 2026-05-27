@@ -48,6 +48,7 @@ import { reportFindingTool } from "./review";
 import { SearchTool } from "./search";
 import { SearchToolBm25Tool } from "./search-tool-bm25";
 import { loadSshTool } from "./ssh";
+import { SubagentTool } from "./subagent";
 import { type TodoPhase, TodoWriteTool } from "./todo-write";
 import { WriteTool } from "./write";
 import { YieldTool } from "./yield";
@@ -84,6 +85,7 @@ export * from "./review";
 export * from "./search";
 export * from "./search-tool-bm25";
 export * from "./ssh";
+export * from "./subagent";
 export * from "./todo-write";
 export * from "./vim";
 export * from "./write";
@@ -295,6 +297,7 @@ export const BUILTIN_TOOLS: Record<string, ToolFactory> = {
 	checkpoint: CheckpointTool.createIf,
 	rewind: RewindTool.createIf,
 	task: s => TaskTool.create(s),
+	subagent: s => new SubagentTool(s),
 	job: JobTool.createIf,
 	recipe: RecipeTool.createIf,
 	irc: IrcTool.createIf,

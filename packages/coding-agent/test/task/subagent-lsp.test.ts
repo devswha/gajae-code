@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "bun:test";
 import type { AssistantMessage } from "@gajae-code/ai";
+import { AsyncJobManager } from "../../src/async";
 import type { ModelRegistry } from "../../src/config/model-registry";
 import { Settings } from "../../src/config/settings";
 import type { LoadExtensionsResult } from "../../src/extensibility/extensions/types";
@@ -166,8 +167,17 @@ function mockIsolation(): void {
 
 describe("subagent LSP availability", () => {
 	afterEach(() => {
+		AsyncJobManager.resetForTests();
 		vi.restoreAllMocks();
 	});
+
+	async function executeDetached(tool: TaskTool, params: TaskParams): Promise<void> {
+		const manager = new AsyncJobManager({ onJobComplete: async () => {} });
+		AsyncJobManager.setInstance(manager);
+		await tool.execute("tool-call", params);
+		await manager.waitForAll();
+		await manager.dispose({ timeoutMs: 100 });
+	}
 
 	it("disables LSP for subagents by default", async () => {
 		mockAgents({
@@ -180,7 +190,7 @@ describe("subagent LSP availability", () => {
 		const { getOptions } = mockCreateAgentSession();
 
 		const tool = await TaskTool.create(createSession());
-		await tool.execute("tool-call", TEST_TASK);
+		await executeDetached(tool, TEST_TASK);
 
 		expect(getOptions()?.enableLsp).toBe(false);
 	});
@@ -196,7 +206,7 @@ describe("subagent LSP availability", () => {
 		const { getOptions } = mockCreateAgentSession();
 
 		const tool = await TaskTool.create(createSession());
-		await tool.execute("tool-call", TEST_TASK);
+		await executeDetached(tool, TEST_TASK);
 
 		expect(getOptions()?.enableMCP).toBe(false);
 	});
@@ -212,7 +222,7 @@ describe("subagent LSP availability", () => {
 		const { getOptions } = mockCreateAgentSession();
 
 		const tool = await TaskTool.create(createSession({ taskEnableLsp: true }));
-		await tool.execute("tool-call", TEST_TASK);
+		await executeDetached(tool, TEST_TASK);
 
 		expect(getOptions()?.enableLsp).toBe(true);
 		expect(getOptions()?.toolNames).toContain("lsp");
@@ -229,7 +239,7 @@ describe("subagent LSP availability", () => {
 		const { getOptions } = mockCreateAgentSession();
 
 		const tool = await TaskTool.create(createSession({ parentEnableLsp: false, taskEnableLsp: true }));
-		await tool.execute("tool-call", TEST_TASK);
+		await executeDetached(tool, TEST_TASK);
 
 		expect(getOptions()?.enableLsp).toBe(false);
 	});
@@ -246,7 +256,7 @@ describe("subagent LSP availability", () => {
 		const { getOptions } = mockCreateAgentSession();
 
 		const tool = await TaskTool.create(createSession({ isolationMode: "auto" }));
-		await tool.execute("tool-call", { ...TEST_TASK, isolated: true });
+		await executeDetached(tool, { ...TEST_TASK, isolated: true });
 
 		expect(getOptions()?.cwd).toBe("/tmp/isolated-subagent");
 		expect(getOptions()?.enableLsp).toBe(false);
@@ -264,7 +274,7 @@ describe("subagent LSP availability", () => {
 		const planMode = { enabled: true, planFilePath: "local://PLAN.md" };
 
 		const tool = await TaskTool.create(createSession({ planMode, taskEnableLsp: true }));
-		await tool.execute("tool-call", TEST_TASK);
+		await executeDetached(tool, TEST_TASK);
 
 		expect(getOptions()?.enableLsp).toBe(true);
 		expect(getOptions()?.toolNames).toEqual(["read", "search", "find", "lsp", "web_search"]);

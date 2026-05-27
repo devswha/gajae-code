@@ -62,7 +62,10 @@ const baseRenderContext: prompt.TemplateContext = {
 		search: "search",
 		find: "find",
 		edit: "edit",
+		irc: "irc",
+		job: "job",
 		task: "task",
+		subagent: "subagent",
 		web_search: "web_search",
 		todo_write: "todo_write",
 		inspect_image: "inspect_image",
@@ -73,7 +76,7 @@ const baseRenderContext: prompt.TemplateContext = {
 		grep: "grep",
 		write: "write",
 	},
-	tools: ["read", "search", "find", "edit", "task", "web_search", "todo_write"],
+	tools: ["read", "search", "find", "edit", "task", "subagent", "job", "irc", "web_search", "todo_write"],
 	worktree: "/tmp/pi-issue-147",
 	writeToolName: "write",
 };
@@ -203,6 +206,19 @@ describe("system Handlebars prompt templates", () => {
 		expect(rendered).toContain("Discoverable MCP servers in this session: github (2 tools), slack (1 tool).");
 		expect(rendered).not.toContain("Example discoverable MCP tools:");
 		expect(rendered).toContain("call `search_tool_bm25` before concluding no such tool exists");
+	});
+
+	test("system-prompt renders detached subagent semantics", async () => {
+		const templatePath = path.join(systemPromptsDir, "system-prompt.md");
+		const template = await Bun.file(templatePath).text();
+
+		const rendered = prompt.render(template, baseRenderContext);
+
+		expect(rendered).toContain("<detached-subagents>");
+		expect(rendered).toContain("Normal `task` launches return immediately as detached background subagents");
+		expect(rendered).toContain("Use `subagent` to list, inspect, await with `timeout_ms`, or cancel");
+		expect(rendered).toContain("If an await timeout elapses, the subagent is still running; this is not a failure.");
+		expect(rendered).toContain("`job` remains the generic background-job tool");
 	});
 
 	test("buildSystemPrompt keeps system and project as separate ordered blocks with date context in project", async () => {

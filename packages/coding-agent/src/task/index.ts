@@ -241,7 +241,7 @@ export class TaskTool implements AgentTool<TaskToolSchemaInstance, TaskToolDetai
 			this.#discoveredAgents,
 			maxConcurrency,
 			isolationMode !== "none",
-			this.session.settings.get("async.enabled"),
+			true,
 			disabledAgents,
 			this.#getTaskSimpleMode(),
 			this.session.settings.get("irc.enabled") === true,
@@ -281,23 +281,45 @@ export class TaskTool implements AgentTool<TaskToolSchemaInstance, TaskToolDetai
 			return createTaskModeError(validationError);
 		}
 
-		const asyncEnabled = this.session.settings.get("async.enabled");
-		const selectedAgent = this.#discoveredAgents.find(agent => agent.name === params.agent);
-		if (!asyncEnabled || selectedAgent?.blocking === true) {
+		const taskItems = params.tasks ?? [];
+		if (taskItems.length === 0) {
 			return this.#executeSync(_toolCallId, params, signal, onUpdate);
+		}
+
+		const agent = getAgent(this.#discoveredAgents, params.agent);
+		if (!agent) {
+			const available =
+				filterVisibleAgents(this.#discoveredAgents)
+					.map(a => a.name)
+					.join(", ") || "none";
+			return {
+				content: [{ type: "text", text: `Unknown agent "${params.agent}". Available: ${available}` }],
+				details: { projectAgentsDir: null, results: [], totalDurationMs: 0 },
+			};
+		}
+
+		const disabledAgents = this.session.settings.get("task.disabledAgents") as string[];
+		if (disabledAgents.length > 0 && disabledAgents.includes(params.agent)) {
+			const enabled = filterVisibleAgents(this.#discoveredAgents)
+				.filter(a => !disabledAgents.includes(a.name))
+				.map(a => a.name);
+			return {
+				content: [
+					{
+						type: "text",
+						text: `Agent "${params.agent}" is disabled in settings. Enable it via /agents, or use a different agent type.${enabled.length > 0 ? ` Available: ${enabled.join(", ")}` : ""}`,
+					},
+				],
+				details: { projectAgentsDir: null, results: [], totalDurationMs: 0 },
+			};
 		}
 
 		const manager = AsyncJobManager.instance();
 		if (!manager) {
 			return {
-				content: [{ type: "text", text: "Async execution is enabled but no async job manager is available." }],
+				content: [{ type: "text", text: "Subagent background execution is unavailable in this session." }],
 				details: { projectAgentsDir: null, results: [], totalDurationMs: 0 },
 			};
-		}
-
-		const taskItems = params.tasks ?? [];
-		if (taskItems.length === 0) {
-			return this.#executeSync(_toolCallId, params, signal, onUpdate);
 		}
 
 		const outputManager =
@@ -468,6 +490,15 @@ export class TaskTool implements AgentTool<TaskToolSchemaInstance, TaskToolDetai
 					{
 						id: label,
 						ownerId: this.session.getAgentId?.() ?? undefined,
+						metadata: {
+							subagent: {
+								id: uniqueId,
+								agent: params.agent,
+								agentSource: fallbackAgentSource,
+								description: taskItem.description,
+								assignment: taskItem.assignment.trim(),
+							},
+						},
 						onProgress: (text, details) => {
 							const progressDetails =
 								(details as TaskToolDetails | undefined) ??
@@ -519,8 +550,8 @@ export class TaskTool implements AgentTool<TaskToolSchemaInstance, TaskToolDetai
 			})
 			.join("\n");
 		const coordinationHint = ircEnabled
-			? ` DM these ids via \`irc\` to coordinate while they run; reach for \`job\` only to inspect (\`list\`), wait (\`poll\`), or cancel a stuck task.`
-			: ` Use \`job\` to inspect (\`list\`), wait (\`poll\`), or cancel a stuck task by id.`;
+			? ` DM these ids via \`irc\` to coordinate while they run. Use \`subagent\` to list, inspect, await with a timeout, or cancel only when no longer needed or unrecoverably stuck; \`job\` remains available for generic background jobs.`
+			: ` Use \`subagent\` to list, inspect, await with a timeout, or cancel only when no longer needed or unrecoverably stuck; \`job\` remains available for generic background jobs.`;
 
 		return {
 			content: [

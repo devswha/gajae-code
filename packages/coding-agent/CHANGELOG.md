@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added a detached `subagent` control tool for task subagents, with list, inspect, await-with-timeout, and cancel actions.
 - Added shared provider onboarding for OpenAI-compatible and Anthropic-compatible API providers through `gjc setup provider` and `/provider add`, with model-list configuration and redacted setup feedback.
 - Added a native in-TUI skill HUD rail backed by `.gjc/state/skill-active-state.json`, so active GJC workflow skills are visible without a separate tmux pane.
 - Added bundled `executor`, `architect`, `planner`, and `critic` role agents for task delegation, including source-defined prompt files and role-agent discovery coverage.
@@ -13,6 +14,8 @@
 
 ### Changed
 
+- Changed normal `task` subagent launches to return immediately as detached background work while keeping generic `job` controls available.
+- Changed default interactive `gjc` startup to enter a `gajae_code` tmux session before launching the Gajae Code TUI, with non-interactive modes continuing to run directly.
 - Changed interactive `gjc` startup to launch tmux only when `--tmux` is provided, with direct startup as the default.
 - Changed GJC default definitions so workflow skills remain source-bundled while repo-visible `.gjc` default artifacts are no longer the source of truth; updated system and Ultragoal guidance to use role-agent delegation and ralplan-first planning when needed.
 - Changed bare `gjc setup` to install the normal default workflow skills, while keeping hooks, provider, Python, and speech-to-text setup as explicit optional components.

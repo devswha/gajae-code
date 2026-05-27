@@ -1,15 +1,13 @@
 Launches subagents to parallelize workflows.
 
-{{#if asyncEnabled}}
 - Results are delivered automatically when complete.
 - The tool result lists the assigned task ids (e.g. `0-AuthLoader`) — those are the live agent ids.
 {{#if ircEnabled}}
-- Coordinate with running tasks via `irc` using those ids. `job cancel` terminates a task and **cannot carry a message** — only use it for stalled/abandoned work.
-- If genuinely blocked on completion, wait with `job poll`; otherwise keep working.
+- Coordinate with running tasks via `irc` using those ids. `subagent` cancel terminates a task and **cannot carry a message** — only use it for stalled/abandoned work.
+- If genuinely blocked on completion, wait with `subagent` action `await` and a timeout; otherwise keep working.
 {{else}}
-- If genuinely blocked on completion, wait with `job poll`; otherwise keep working.
-- Use `job list` to snapshot manager state; `cancel: [id]` only to actually stop a stuck task.
-{{/if}}
+- If genuinely blocked on completion, wait with `subagent` action `await` and a timeout; otherwise keep working.
+- Use `subagent` action `inspect` or `list` to snapshot manager state; `cancel` only when a task is no longer needed or unrecoverably stuck.
 {{/if}}
 
 {{#if ircEnabled}}
