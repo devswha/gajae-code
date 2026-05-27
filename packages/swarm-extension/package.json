@@ -1,7 +1,7 @@
 {
 	"type": "module",
 	"name": "@gajae-code/swarm-extension",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Swarm orchestration extension for gjc",
 	"homepage": "https://gajae-code.dev",
 	"author": "Derek Rynd",

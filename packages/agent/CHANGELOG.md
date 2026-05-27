@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-05-28
+
 ### Added
 
 - Added `Agent.forceAbort()` so hosts can recover from provider/tool aborts that ignore cooperative cancellation without clearing conversation history.

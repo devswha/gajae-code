@@ -1,7 +1,7 @@
 {
 	"type": "module",
 	"name": "@gajae-code/ai",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Unified LLM API with automatic model discovery and provider configuration",
 	"homepage": "https://gajae-code.dev",
 	"author": "Can Boluk",

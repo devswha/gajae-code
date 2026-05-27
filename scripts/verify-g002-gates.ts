@@ -14,7 +14,7 @@ import * as path from "node:path";
 const repoRoot = path.join(import.meta.dir, "..");
 const EXPECTED_DEFINITIONS = ["deep-interview", "ralplan", "team", "ultragoal"] as const;
 const EXPECTED_ROLE_AGENTS = ["architect", "critic", "executor", "planner"] as const;
-const EXPECTED_PUBLIC_PACKAGE_VERSION = "0.1.0";
+const EXPECTED_PUBLIC_PACKAGE_VERSION = "0.1.1";
 const ALLOWED_PRIVATE_PACKAGE_VERSIONS = new Map<string, string>([["@gajae-code/typescript-edit-benchmark", "0.0.1"]]);
 const ALLOWED_UNSCOPED_PACKAGE_NAMES = new Set<string>(["gajae-code"]);
 const ALLOWED_PACKAGE_BINARIES = new Map<string, readonly string[]>([

@@ -15,7 +15,7 @@
     },
     "packages/agent": {
       "name": "@gajae-code/agent-core",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
         "@gajae-code/ai": "catalog:",
         "@gajae-code/natives": "catalog:",
@@ -30,7 +30,7 @@
     },
     "packages/ai": {
       "name": "@gajae-code/ai",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "bin": {
         "pi-ai": "./src/cli.ts",
       },
@@ -48,7 +48,7 @@
     },
     "packages/coding-agent": {
       "name": "@gajae-code/coding-agent",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "bin": {
         "gjc": "src/cli.ts",
       },
@@ -83,7 +83,7 @@
     },
     "packages/gajae-code": {
       "name": "gajae-code",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "bin": {
         "gjc": "bin/gjc.js",
       },
@@ -93,7 +93,7 @@
     },
     "packages/natives": {
       "name": "@gajae-code/natives",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "devDependencies": {
         "@napi-rs/cli": "catalog:",
         "@types/bun": "catalog:",
@@ -101,7 +101,7 @@
     },
     "packages/stats": {
       "name": "@gajae-code/stats",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "bin": {
         "gjc-stats": "./src/index.ts",
       },
@@ -126,7 +126,7 @@
     },
     "packages/swarm-extension": {
       "name": "@gajae-code/swarm-extension",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "bin": {
         "gjc-swarm": "src/cli.ts",
       },
@@ -137,12 +137,12 @@
         "@types/bun": "^1.3.14",
       },
       "peerDependencies": {
-        "@gajae-code/coding-agent": "^13",
+        "@gajae-code/coding-agent": "workspace:*",
       },
     },
     "packages/tui": {
       "name": "@gajae-code/tui",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
         "@gajae-code/natives": "catalog:",
         "@gajae-code/utils": "catalog:",
@@ -182,7 +182,7 @@
     },
     "packages/utils": {
       "name": "@gajae-code/utils",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "dependencies": {
         "@gajae-code/natives": "catalog:",
         "beautiful-mermaid": "catalog:",
@@ -220,13 +220,13 @@
     "@biomejs/biome": "^2.4.14",
     "@bufbuild/protobuf": "^2.12.0",
     "@bufbuild/protoc-gen-es": "^2.12.0",
-    "@gajae-code/agent-core": "workspace:*",
-    "@gajae-code/ai": "workspace:*",
-    "@gajae-code/coding-agent": "workspace:*",
-    "@gajae-code/natives": "workspace:*",
-    "@gajae-code/stats": "workspace:*",
-    "@gajae-code/tui": "workspace:*",
-    "@gajae-code/utils": "workspace:*",
+    "@gajae-code/agent-core": "0.1.1",
+    "@gajae-code/ai": "0.1.1",
+    "@gajae-code/coding-agent": "0.1.1",
+    "@gajae-code/natives": "0.1.1",
+    "@gajae-code/stats": "0.1.1",
+    "@gajae-code/tui": "0.1.1",
+    "@gajae-code/utils": "0.1.1",
     "@mozilla/readability": "^0.6.0",
     "@napi-rs/cli": "3.6.2",
     "@opentelemetry/api": "^1.9.0",
@@ -841,7 +841,7 @@
 
     "data-uri-to-buffer": ["data-uri-to-buffer@6.0.2", "", {}, "sha512-7hvf7/GW8e86rW0ptuwS3OcBGDjIi6SZva7hCyWC0yYry2cOPmLIjXAUHI6DK2HsnwJd9ifmt57i8eV2n4YNpw=="],
 
-    "date-fns": ["date-fns@4.2.1", "", {}, "sha512-37RhSdxaG1suen6VDCza6rNrQfooyQh57HFVPwQGEq2QWliVLzPQZ8Oa017weOu+HZCnzI7N3Pf/wyoBKfEqrA=="],
+    "date-fns": ["date-fns@4.3.0", "", {}, "sha512-OYcL+3N/jyWbYdFGqoMAhytDgxP9pbYPUUiRCOgn4Fewaadk9l/Wam4Avciiyp2BgkpfQyBV9B+ehnVJych+eQ=="],
 
     "debug": ["debug@4.4.3", "", { "dependencies": { "ms": "^2.1.3" }, "peerDependencies": { "supports-color": "*" }, "optionalPeers": ["supports-color"] }, "sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA=="],
 
@@ -1215,7 +1215,7 @@
 
     "text-hex": ["text-hex@1.0.0", "", {}, "sha512-uuVGNWzgJ4yhRaNSiubPY7OjISw4sw4E5Uv0wbjp+OzcbmVU/rsT8ujgcXJhn9ypzsgr5vlzpPqP+MBBKcGvbg=="],
 
-    "tinyexec": ["tinyexec@1.1.2", "", {}, "sha512-dAqSqE/RabpBKI8+h26GfLq6Vb3JVXs30XYQjdMjaj/c2tS8IYYMbIzP599KtRj7c57/wYApb3QjgRgXmrCukA=="],
+    "tinyexec": ["tinyexec@1.2.2", "", {}, "sha512-M/Q0B2cp4K7kynaT/vnED1j8TlLY+Pp7C6Wl2bl/7u/F0mUVwdyOpwomQb8JpYLitHUssAJRmLZdMCGsrx7i+g=="],
 
     "token-types": ["token-types@6.1.2", "", { "dependencies": { "@borewit/text-codec": "^0.2.1", "@tokenizer/token": "^0.3.0", "ieee754": "^1.2.1" } }, "sha512-dRXchy+C0IgK8WPC6xvCHFRIWYUbqqdEIKPaKo/AcTUNzwLTK6AH7RjdLWsEZcAN/TBdtfUw3PYEgPr5VPr6ww=="],
 

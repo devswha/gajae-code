@@ -1,7 +1,7 @@
 {
 	"type": "module",
 	"name": "@gajae-code/stats",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"description": "Local observability dashboard for pi AI usage statistics",
 	"homepage": "https://gajae-code.dev",
 	"author": "Can Boluk",
