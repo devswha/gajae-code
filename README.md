@@ -1,66 +1,94 @@
-# Gajae-Code
+<p align="center">
+  <img src="assets/hero.png" alt="Gajae-Code hero logo" width="780">
+</p>
 
-Gajae-Code (`gjc`) is a minimal coding-agent harness with a deliberately fixed public surface: four workflow skills, four role subagents, and a resilient CLI/runtime around them.
+<h1 align="center">Gajae-Code</h1>
 
-## Story
+<p align="center">
+  A red-claw coding-agent harness for crisp interviews, resilient plans, tmux-native execution, and durable verification.
+</p>
 
+<p align="center">
+  <img src="assets/icon.svg" alt="Gaebal Gajae avatar" width="96" height="96">
+</p>
 I created an earlier OpenAI code harness and `an earlier Anthropic-code harness`. After living with those harnesses, I felt the same thing kept happening: the harness got bloated, but the work still collapsed into one useful loop.
 
-My claw, Gajae, and I realized the real method was:
+## Usage
 
-```text
-interview to remove ambiguity
-  -> ralplan pre-mortem
-  -> fast parallel execution
-  -> post-mortem with persistent verification evidence and goal tracking
+Gajae-Code is published through the normal npm registry. Install it with Bun for the recommended runtime workflow:
+
+```sh
+bun install gajae-code
 ```
 
-So I made Gajae-Code as a minimal harness that can work with any model. The harness stays fat where resilience matters: CLI, tools, sessions, model routing, artifacts, native helpers, and verification state. The public workflow stays small on purpose.
+For repository development, use the source checkout commands in [Development](#development).
 
-No more default skills. No more default role agents. The product gets better by improving the harness methodology around the same four skills and four subagents.
+Start the recommended tmux-backed experience:
 
-## Default TUI identity
+```sh
+gjc --tmux
+```
 
-The default dark TUI identity is the GJC red-claw theme: a red/orange crustacean look for Gajae-Code terminals. Explicit user theme settings still win.
+Bare `gjc` launches directly without creating or attaching a tmux session:
 
-## The four skills
+```sh
+gjc
+```
 
-| Skill | Purpose |
+Run inside an isolated Git worktree when you want a safer branch-local workspace:
+
+```sh
+gjc --tmux --worktree <path>
+```
+
+Use a dedicated path for throwaway or branch-specific work so the main checkout stays clean.
+
+## Why Gajae-Code?
+
+Gajae-Code (`gjc`) keeps the public agent surface intentionally small while making the runtime around it dependable. It focuses on one useful loop:
+
+```text
+deep interview -> ralplan -> team execution -> ultragoal verification
+```
+
+The result is a compact CLI that stays easy to reason about, but still gives you session state, worktree isolation, tmux orchestration, model routing, tool execution, and persistent evidence when the work needs it.
+
+## Workflow surface
+
+Gajae-Code ships four default workflow skills:
+
+| Skill | What it does |
 | --- | --- |
-| `deep-interview` | Remove ambiguity before planning. |
-| `ralplan` | Pre-mortem planning and approval before mutation. |
-| `team` | Fast coordinated execution after approval. |
-| `ultragoal` | Persistent goal tracking and verification evidence. |
+| `deep-interview` | Removes ambiguity before planning or code changes. |
+| `ralplan` | Builds and critiques a plan before mutation. |
+| `team` | Coordinates tmux-backed parallel execution. |
+| `ultragoal` | Tracks durable goals, checkpoints, and verification evidence. |
 
-## The four subagents
+And four bundled role agents:
 
-| Agent | Purpose |
+| Agent | What it does |
 | --- | --- |
 | `executor` | Bounded implementation, fixes, and refactors. |
 | `architect` | Read-only architecture and code-review assessment. |
 | `planner` | Read-only sequencing and acceptance criteria. |
 | `critic` | Read-only plan critique and actionability review. |
 
-## Install
+No sprawling default skill zoo: the harness improves by making this small method better.
+
+## Development
+
+Install dependencies and local defaults:
 
 ```sh
 bun install
 bun run install:defaults
 ```
 
-## Run
+Run the CLI from source:
 
 ```sh
 bun packages/coding-agent/src/cli.ts --help
 ```
-
-When installed globally:
-
-```sh
-gjc --help
-```
-
-## Development
 
 Default workflow definitions live in source, not committed `.gjc` copies:
 
@@ -69,7 +97,7 @@ packages/coding-agent/src/defaults/gjc/skills/<name>/SKILL.md
 packages/coding-agent/src/prompts/agents/<role>.md
 ```
 
-For workflow-definition or rebrand-surface changes, run:
+For workflow-definition or rebrand-surface changes, run the project gates:
 
 ```sh
 bun scripts/check-visible-definitions.ts
@@ -80,6 +108,14 @@ bun test packages/coding-agent/test/default-gjc-definitions.test.ts
 
 For a package-by-package map, see [`docs/codebase-overview.md`](docs/codebase-overview.md).
 
-## Attribution
+## Inspirations and lineage
 
-Gajae-Code is a forked/rebranded derivative that preserves upstream attribution where required while presenting GJC commands, package names, and runtime paths in the active product surface.
+Gajae-Code builds on lessons from a small family of agent harnesses and keeps attribution visible:
+
+- [`oh-my-pi`](https://github.com/can1357/oh-my-pi) — the upstream red-claw lineage and implementation DNA.
+- [`oh-my-codex`](https://github.com/Yeachan-Heo/oh-my-codex) — Codex-focused orchestration experiments.
+- [`oh-my-claudecode`](https://github.com/Yeachan-Heo/oh-my-claudecode) — Claude Code workflow exploration.
+
+## License
+
+MIT. See [`LICENSE`](LICENSE).
