@@ -6,17 +6,18 @@ import {
 	writeCurrentSessionGoalModeState,
 	writePendingGoalModeRequest,
 } from "../gjc-runtime/goal-mode-request";
-import { runGjcRuntimeBridge } from "./gjc-runtime-bridge";
+import { runNativeUltragoalCommand } from "../gjc-runtime/ultragoal-runtime";
 
 export default class Ultragoal extends Command {
-	static description = "Run private GJC Ultragoal workflow commands";
+	static description = "Run native GJC Ultragoal workflow commands";
 	static strict = false;
 	static examples = ["$ gjc ultragoal status --json"];
 
 	async run(): Promise<void> {
 		const shouldActivateGoalMode = isUltragoalCreateGoalsInvocation(this.argv);
-		const result = runGjcRuntimeBridge("ultragoal", this.argv);
-		if (result.error) process.stderr.write(`${result.error}\n`);
+		const result = await runNativeUltragoalCommand(this.argv);
+		if (result.stdout) process.stdout.write(result.stdout);
+		if (result.stderr) process.stderr.write(result.stderr);
 		process.exitCode = result.status;
 		if (result.status !== 0 || !shouldActivateGoalMode) return;
 

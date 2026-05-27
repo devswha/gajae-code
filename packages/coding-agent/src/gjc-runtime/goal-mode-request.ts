@@ -14,7 +14,7 @@ export const GJC_SESSION_ID_ENV = "GJC_SESSION_ID";
 export const GJC_SESSION_CWD_ENV = "GJC_SESSION_CWD";
 
 const REQUEST_VERSION = 1;
-const DEFAULT_ULTRAGOAL_OBJECTIVE =
+export const DEFAULT_ULTRAGOAL_OBJECTIVE =
 	"Complete the durable ultragoal plan in .gjc/ultragoal/goals.json, including later accepted/appended stories, under the original brief constraints; use .gjc/ultragoal/ledger.jsonl as the audit trail.";
 
 export interface PendingGoalModeRequest {

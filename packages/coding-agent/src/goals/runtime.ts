@@ -248,26 +248,21 @@ export class GoalRuntime {
 		this.#turnSnapshot = undefined;
 	}
 
-	async onTaskAborted(options?: { reason?: "interrupted" | "internal" }): Promise<void> {
+	async onTaskAborted(_options?: { reason?: "interrupted" | "internal" }): Promise<void> {
 		const state = this.#host.getState();
 		const needsAccounting = state?.enabled && isAccountingStatus(state.goal);
-		const needsPause = options?.reason === "interrupted" && state?.enabled && state.goal.status === "active";
-		if (!needsAccounting && !needsPause) {
+		if (!needsAccounting) {
 			this.#turnSnapshot = undefined;
 			return;
 		}
 		await this.#withAccounting(async () => {
 			await this.#flushUsageLocked("suppressed");
 			this.#turnSnapshot = undefined;
-			if (options?.reason !== "interrupted") return;
 			const cloned = this.#getStateClone();
-			if (!cloned?.enabled || cloned.goal.status !== "active") return;
-			cloned.enabled = false;
-			cloned.goal.status = "paused";
+			if (!cloned?.enabled || !isAccountingStatus(cloned.goal)) return;
 			cloned.goal.updatedAt = this.#now();
-			this.#clearActiveAccounting();
-			this.#budgetReportedFor = undefined;
-			await this.#commitState(cloned, { persist: "goal_paused" });
+			this.#markActiveAccounting(cloned.goal);
+			await this.#commitState(cloned, { persist: "goal" });
 		});
 	}
 
@@ -275,13 +270,7 @@ export class GoalRuntime {
 		const state = this.#getStateClone();
 		if (!state) return undefined;
 		if (state.goal.status === "active") {
-			state.enabled = false;
-			state.goal.status = "paused";
-			state.goal.updatedAt = this.#now();
-			this.#clearActiveAccounting();
-			this.#budgetReportedFor = undefined;
-			await this.#commitState(state, { persist: "goal_paused" });
-			return state;
+			state.enabled = true;
 		}
 		if (state.enabled && isAccountingStatus(state.goal)) {
 			this.#markActiveAccounting(state.goal);

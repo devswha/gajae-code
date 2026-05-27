@@ -171,7 +171,7 @@ describe("goal runtime", () => {
 		expect(harness.hiddenMessages).toHaveLength(2);
 	});
 
-	it("pauses an active goal when an interruption aborts the task", async () => {
+	it("keeps an active goal active when an interruption aborts the task", async () => {
 		const harness = createHarness({
 			state: { enabled: true, mode: "active", goal: createGoal() },
 		});
@@ -182,24 +182,24 @@ describe("goal runtime", () => {
 		await harness.runtime.onTaskAborted({ reason: "interrupted" });
 
 		const state = harness.getState();
-		expect(state?.enabled).toBe(false);
-		expect(state?.goal.status).toBe("paused");
+		expect(state?.enabled).toBe(true);
+		expect(state?.goal.status).toBe("active");
 		expect(state?.goal.tokensUsed).toBe(4);
 		expect(state?.goal.timeUsedSeconds).toBe(1);
-		expect(harness.persists.at(-1)?.mode).toBe("goal_paused");
+		expect(harness.persists.at(-1)?.mode).toBe("goal");
 	});
 
-	it("auto-pauses active goals when a thread resumes", async () => {
+	it("keeps active goals active when a thread resumes", async () => {
 		const harness = createHarness({
 			state: { enabled: true, mode: "active", goal: createGoal() },
 		});
 
 		const resumed = await harness.runtime.onThreadResumed();
-		expect(resumed?.enabled).toBe(false);
-		expect(resumed?.goal.status).toBe("paused");
-		expect(harness.getState()?.enabled).toBe(false);
-		expect(harness.getState()?.goal.status).toBe("paused");
-		expect(harness.persists.at(-1)?.mode).toBe("goal_paused");
+		expect(resumed?.enabled).toBe(true);
+		expect(resumed?.goal.status).toBe("active");
+		expect(harness.getState()?.enabled).toBe(true);
+		expect(harness.getState()?.goal.status).toBe("active");
+		expect(harness.persists.at(-1)?.mode).toBeUndefined();
 	});
 
 	it("escapes XML in goal helpers and rendered prompts", () => {
