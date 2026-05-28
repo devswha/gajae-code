@@ -191,13 +191,17 @@ export async function runGjcRuntimeBridgeWithHudSidecar(
 			const interval = setInterval(() => {
 				void publishPayload();
 			}, options.pollIntervalMs ?? 100);
-			const exit = Promise.withResolvers<{ status: number; error?: string }>();
-			child.on("error", error => exit.resolve({ status: 1, error: error.message }));
+			const exit = Promise.withResolvers<{ status: number; error?: string; errorCode?: string }>();
+			child.on("error", error => {
+				const errno = error as NodeJS.ErrnoException;
+				exit.resolve({ status: 1, error: error.message, errorCode: errno.code });
+			});
 			child.on("exit", (code, signal) => exit.resolve({ status: code ?? (signal ? 1 : 0) }));
 			const result = await exit.promise;
 			clearInterval(interval);
 			await publishPayload();
-			return { ...result, ...(latestPayload ? { hudPayload: latestPayload } : {}) };
+			if (result.errorCode === "ENOENT") continue;
+			return { status: result.status, error: result.error, ...(latestPayload ? { hudPayload: latestPayload } : {}) };
 		} finally {
 			await fs.rm(sidecarDir, { recursive: true, force: true });
 		}

@@ -113,4 +113,28 @@ printf '{"version":1,"skill":"ralplan","phase":"critic","hud":{"version":1,"chip
 		expect(result.status).toBe(0);
 		expect(result.hudPayload?.phase).toBe("critic");
 	});
+	it("falls back to legacy runtime candidate for sidecar bridges on ENOENT", async () => {
+		cleanupRoot = await mkdtemp(join(tmpdir(), "gjc-runtime-bridge-"));
+		const runtimePath = join(cleanupRoot, "legacy-gjc-runtime.sh");
+		await writeFile(
+			runtimePath,
+			`#!/bin/sh
+printf '{"version":1,"skill":"ralplan","phase":"critic","hud":{"version":1,"chips":[{"label":"stage","value":"critic"}]}}' > "$GJC_WORKFLOW_HUD_SIDECAR"
+`,
+			{ mode: 0o755 },
+		);
+
+		const result = await runGjcRuntimeBridgeWithHudSidecar("ralplan", [], {
+			env: {
+				GJC_RUNTIME_BINARY: "missing-gjc-runtime",
+				GJC_LEGACY_RUNTIME_BINARY: runtimePath,
+				PATH: "",
+			},
+			sidecarSkill: "ralplan",
+			pollIntervalMs: 25,
+		});
+
+		expect(result.status).toBe(0);
+		expect(result.hudPayload?.phase).toBe("critic");
+	});
 });
