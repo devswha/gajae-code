@@ -6,6 +6,7 @@ import {
 	checkpointUltragoalGoal,
 	createUltragoalPlan,
 	getUltragoalStatus,
+	hashStructuredValue,
 	readUltragoalLedger,
 	runNativeUltragoalCommand,
 	startNextUltragoalGoal,
@@ -132,6 +133,71 @@ describe("native GJC ultragoal runtime", () => {
 		});
 
 		expect(diagnostic.state).toBe("active_stale_receipt");
+	});
+	it("accepts refreshed final aggregate receipts that record a complete pre-checkpoint status", () => {
+		const qualityGate = passingQualityGate();
+		const plan = {
+			version: 1 as const,
+			brief: "Ship the fix",
+			gjcGoalMode: "aggregate" as const,
+			gjcObjective: "objective",
+			createdAt: "2026-05-28T00:00:00.000Z",
+			updatedAt: "2026-05-28T00:00:01.000Z",
+			goals: [
+				{
+					id: "G001",
+					title: "Ship the fix",
+					objective: "Ship the fix",
+					status: "complete" as const,
+					createdAt: "2026-05-28T00:00:00.000Z",
+					updatedAt: "2026-05-28T00:00:01.000Z",
+					completedAt: "2026-05-28T00:00:01.000Z",
+					completionVerification: {
+						schemaVersion: 1 as const,
+						receiptId: "receipt-1",
+						verifiedAt: "2026-05-28T00:00:01.000Z",
+						goalId: "G001",
+						receiptKind: "final-aggregate" as const,
+						goalStatusBeforeCheckpoint: "complete" as const,
+						gjcGoalMode: "aggregate" as const,
+						gjcObjective: "objective",
+						qualityGateHash: hashStructuredValue(qualityGate),
+						planGeneration: "stale-generation-is-ignored-for-refreshed-complete-receipts",
+						basis: {
+							planHashBeforeCheckpoint: "hash",
+							latestRelevantLedgerEventIdBeforeCheckpoint: "goal-started",
+							goalUpdatedAtBeforeCheckpoint: "2026-05-28T00:00:01.000Z",
+							relevantGoalIdsBeforeCheckpoint: ["G001"],
+							requiredGoalSetHashBeforeCheckpoint: "hash",
+						},
+						checkpointLedgerEventId: "goal-checkpointed",
+					},
+				},
+			],
+		};
+		const receipt = plan.goals[0]?.completionVerification;
+		if (!receipt) throw new Error("missing receipt");
+		const ledger = [
+			{ eventId: "goal-started", event: "goal_started", goalId: "G001", timestamp: "2026-05-28T00:00:00.500Z" },
+			{
+				eventId: "goal-checkpointed",
+				event: "goal_checkpointed",
+				goalId: "G001",
+				status: "complete",
+				qualityGateJson: qualityGate,
+				completionVerification: receipt,
+				timestamp: "2026-05-28T00:00:01.000Z",
+			},
+		];
+
+		const diagnostic = validateCompletionReceipt({
+			plan,
+			ledger,
+			goal: plan.goals[0],
+			receiptKind: "final-aggregate",
+		});
+
+		expect(diagnostic.state).toBe("active_verified_complete");
 	});
 
 	it("blocks complete checkpoints without full architect and executor verification", async () => {
