@@ -1046,6 +1046,11 @@ export class AuthStorage {
 		return this.#sessionLastCredential.get(provider)?.get(sessionId);
 	}
 
+	/** Returns the credential type selected for a provider/session, if one has been recorded. */
+	getSessionCredentialType(provider: string, sessionId?: string): AuthCredential["type"] | undefined {
+		return this.#getSessionCredential(provider, sessionId)?.type;
+	}
+
 	/** Clears the last credential used by a session for a provider. */
 	#clearSessionCredential(provider: string, sessionId: string | undefined): void {
 		if (!sessionId) return;

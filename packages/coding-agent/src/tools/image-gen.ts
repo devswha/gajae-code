@@ -44,6 +44,7 @@ interface ImageApiKey {
 	apiKey: string;
 	projectId?: string;
 	model?: Model;
+	authCredentialType?: "api_key" | "oauth";
 }
 
 const responseModalitySchema = z.enum(["IMAGE", "TEXT"] as const);
@@ -441,6 +442,7 @@ async function findOpenAIHostedImageCredentials(
 		provider: getOpenAIHostedImageProvider(activeModel),
 		apiKey,
 		model: activeModel,
+		authCredentialType: modelRegistry.getSessionCredentialType?.(activeModel.provider, sessionId),
 	};
 }
 
@@ -700,10 +702,11 @@ function getOpenAIResponseErrorMessage(rawText: string): string {
 	}
 }
 
-function getOpenAIBaseUrl(model: Model): string {
+function getOpenAIBaseUrl(model: Model, authCredentialType?: "api_key" | "oauth"): string {
 	if (model.api === "openai-codex-responses" || model.provider === "openai-codex") {
 		return (model.baseUrl || CODEX_BASE_URL).replace(/\/+$/, "");
 	}
+	if (authCredentialType === "oauth") return DEFAULT_OPENAI_BASE_URL;
 	const envBaseUrl = $env.OPENAI_BASE_URL?.trim();
 	const configuredBaseUrl = model.baseUrl?.trim();
 	if (envBaseUrl && (!configuredBaseUrl || configuredBaseUrl.toLowerCase().includes("api.openai.com"))) {
@@ -712,8 +715,8 @@ function getOpenAIBaseUrl(model: Model): string {
 	return (configuredBaseUrl || envBaseUrl || DEFAULT_OPENAI_BASE_URL).replace(/\/+$/, "");
 }
 
-function getOpenAIResponsesUrl(model: Model): string {
-	const baseUrl = getOpenAIBaseUrl(model);
+function getOpenAIResponsesUrl(model: Model, authCredentialType?: "api_key" | "oauth"): string {
+	const baseUrl = getOpenAIBaseUrl(model, authCredentialType);
 	if (model.api !== "openai-codex-responses" && model.provider !== "openai-codex") {
 		return `${baseUrl}/responses`;
 	}
@@ -786,11 +789,12 @@ async function generateOpenAIHostedImage(
 	inputImages: InlineImageData[],
 	signal: AbortSignal | undefined,
 	sessionId: string | undefined,
+	options?: { authCredentialType?: "api_key" | "oauth" },
 ): Promise<OpenAIHostedImageResult> {
 	const promptText = assemblePrompt(params);
 	const stream = model.api === "openai-codex-responses" || model.provider === "openai-codex";
 	const requestBody = buildOpenAIHostedImageRequest(model, promptText, params, inputImages, stream);
-	const response = await fetch(getOpenAIResponsesUrl(model), {
+	const response = await fetch(getOpenAIResponsesUrl(model, options?.authCredentialType), {
 		method: "POST",
 		headers: buildOpenAIImageHeaders(model, apiKey, sessionId),
 		body: JSON.stringify(requestBody),
@@ -950,6 +954,7 @@ export const imageGenTool: CustomTool<typeof imageGenSchema, ImageGenToolDetails
 					resolvedImages,
 					requestSignal,
 					sessionId,
+					{ authCredentialType: apiKey.authCredentialType },
 				);
 
 				if (parsed.images.length === 0) {

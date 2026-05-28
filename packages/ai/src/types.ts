@@ -364,6 +364,11 @@ export interface StreamOptions {
 	 * channel) silently ignore the override.
 	 */
 	fetch?: FetchImpl;
+	/**
+	 * Authentication credential type selected for this request.
+	 * Providers use this only when endpoint routing differs between API-key and OAuth credentials.
+	 */
+	authCredentialType?: "api_key" | "oauth";
 	/** Cursor exec/MCP tool handlers (cursor-agent only). */
 	execHandlers?: CursorExecHandlers;
 }

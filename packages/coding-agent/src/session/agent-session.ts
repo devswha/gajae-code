@@ -6446,6 +6446,7 @@ export class AgentSession {
 					metadata: this.agent.metadataForProvider(candidate.provider),
 					convertToLlm,
 					telemetry,
+					authCredentialType: this.#modelRegistry.getSessionCredentialType(candidate.provider, this.sessionId),
 				});
 			} catch (error) {
 				if (!this.#isCompactionAuthFailure(error)) {
@@ -6701,6 +6702,10 @@ export class AgentSession {
 								initiatorOverride: "agent",
 								convertToLlm,
 								telemetry,
+								authCredentialType: this.#modelRegistry.getSessionCredentialType(
+									candidate.provider,
+									this.sessionId,
+								),
 							});
 							break;
 						} catch (error) {

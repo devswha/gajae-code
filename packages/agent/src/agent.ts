@@ -128,6 +128,7 @@ export interface AgentOptions {
 	 * Useful for expiring tokens (e.g., GitHub Copilot OAuth).
 	 */
 	getApiKey?: (provider: string) => Promise<string | undefined> | string | undefined;
+	getAuthCredentialType?: (provider: string) => "api_key" | "oauth" | undefined;
 
 	/**
 	 * Inspect or replace provider payloads before they are sent.
@@ -307,6 +308,7 @@ export class Agent {
 
 	streamFn: StreamFn;
 	getApiKey?: (provider: string) => Promise<string | undefined> | string | undefined;
+	getAuthCredentialType?: (provider: string) => "api_key" | "oauth" | undefined;
 	/**
 	 * Hook invoked after tool arguments are validated and before execution.
 	 * Reassign at any time to swap the implementation (e.g. on extension reload).
@@ -339,6 +341,7 @@ export class Agent {
 		this.#hideThinkingSummary = opts.hideThinkingSummary;
 		this.#maxRetryDelayMs = opts.maxRetryDelayMs;
 		this.getApiKey = opts.getApiKey;
+		this.getAuthCredentialType = opts.getAuthCredentialType;
 		this.#onPayload = opts.onPayload;
 		this.#onResponse = opts.onResponse;
 		this.#onSseEvent = opts.onSseEvent;
@@ -1081,6 +1084,7 @@ export class Agent {
 			onSseEvent: this.#onSseEvent,
 			signal: abortController.signal,
 			getApiKey: this.getApiKey,
+			getAuthCredentialType: this.getAuthCredentialType,
 			getToolContext: this.#getToolContext,
 			syncContextBeforeModelCall: async context => {
 				if (this.#listeners.size > 0) {

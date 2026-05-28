@@ -106,6 +106,9 @@ export interface AgentLoopConfig extends SimpleStreamOptions {
 	 */
 	getApiKey?: (provider: string) => Promise<string | undefined> | string | undefined;
 
+	/** Returns the credential type selected by the most recent getApiKey call for this session/provider. */
+	getAuthCredentialType?: (provider: string) => "api_key" | "oauth" | undefined;
+
 	/**
 	 * Returns steering messages to inject into the conversation mid-run.
 	 *

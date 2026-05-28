@@ -521,6 +521,7 @@ export interface SummaryOptions {
 	 * or `compaction_turn_prefix`). `undefined` keeps the call paths zero-cost.
 	 */
 	telemetry?: AgentTelemetry;
+	authCredentialType?: "api_key" | "oauth";
 }
 
 export async function generateSummary(
@@ -621,6 +622,7 @@ export interface HandoffOptions {
 	 * wrapped in an OTEL chat span tagged with `pi.gen_ai.oneshot.kind = "handoff"`.
 	 */
 	telemetry?: AgentTelemetry;
+	authCredentialType?: "api_key" | "oauth";
 }
 
 export function renderHandoffPrompt(customInstructions?: string): string {
@@ -928,6 +930,7 @@ export async function compact(
 					remoteHistory,
 					summaryOptions.remoteInstructions ?? SUMMARIZATION_SYSTEM_PROMPT,
 					signal,
+					{ authCredentialType: options?.authCredentialType },
 				);
 				preserveData = withOpenAiRemoteCompactionPreserveData(previousPreserveData, remote);
 			} catch (err) {

@@ -2170,6 +2170,10 @@ export class ModelRegistry {
 		return this.authStorage.hasOAuth(model.provider);
 	}
 
+	getSessionCredentialType(provider: string, sessionId?: string): "api_key" | "oauth" | undefined {
+		return this.authStorage.getSessionCredentialType(provider, sessionId);
+	}
+
 	#clearRuntimeProviderState(providerName: string): void {
 		this.#runtimeProviderApiKeys.delete(providerName);
 		this.#runtimeProviderOverrides.delete(providerName);

@@ -197,4 +197,35 @@ describe("StreamOptions.fetch override", () => {
 			restore();
 		}
 	});
+
+	it("keeps OAuth OpenAI requests on the default API base URL even when OPENAI_BASE_URL is set", async () => {
+		const restore = setEnvForTest("OPENAI_BASE_URL", "https://openai-proxy.example.com/v1");
+		const calls: Array<{ url: string }> = [];
+		try {
+			const customFetch = async (input: string | URL | Request, _init?: RequestInit) => {
+				calls.push({ url: String(input instanceof Request ? input.url : input) });
+				return createSseResponse([
+					{ type: "response.created", response: { id: "resp_test" } },
+					{
+						type: "response.completed",
+						response: {
+							id: "resp_test",
+							status: "completed",
+							usage: { input_tokens: 1, output_tokens: 0, total_tokens: 1 },
+						},
+					},
+				]);
+			};
+
+			await streamOpenAIResponses(openAIResponsesModel, baseContext(), {
+				apiKey: "oauth-token",
+				authCredentialType: "oauth",
+				fetch: customFetch,
+			}).result();
+
+			expect(calls[0]?.url).toBe("https://api.openai.com/v1/responses");
+		} finally {
+			restore();
+		}
+	});
 });

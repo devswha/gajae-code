@@ -1761,6 +1761,7 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 				}
 				return key;
 			},
+			getAuthCredentialType: provider => modelRegistry.getSessionCredentialType(provider, agent.sessionId),
 			streamFn: (streamModel, context, streamOptions) =>
 				streamSimple(streamModel, context, {
 					...streamOptions,

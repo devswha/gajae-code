@@ -671,6 +671,8 @@ async function streamAssistantResponse(
 
 	// Re-resolve metadata after credential selection so the per-request value
 	// reflects the credential actually used, not the snapshot from AgentLoopConfig construction.
+	const authCredentialType = config.getAuthCredentialType?.(config.model.provider);
+
 	const resolvedMetadata = config.metadataResolver ? config.metadataResolver(config.model.provider) : config.metadata;
 
 	const dynamicToolChoice = config.getToolChoice?.();
@@ -731,6 +733,7 @@ async function streamAssistantResponse(
 			const response = await streamFunction(config.model, llmContext, {
 				...config,
 				apiKey: resolvedApiKey,
+				authCredentialType,
 				metadata: resolvedMetadata,
 				toolChoice: effectiveToolChoice,
 				reasoning: effectiveReasoning,

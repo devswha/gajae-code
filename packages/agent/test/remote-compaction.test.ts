@@ -167,6 +167,32 @@ describe("remote compaction endpoint", () => {
 			restore();
 		}
 	});
+
+	test("keeps OAuth OpenAI compaction on the default API base URL when OPENAI_BASE_URL is set", async () => {
+		const restore = setEnvForTest("OPENAI_BASE_URL", "https://openai-proxy.example.com/v1");
+		let requestUrl: string | undefined;
+		try {
+			using _hook = hookFetch(async input => {
+				requestUrl = String(input instanceof Request ? input.url : input);
+				return Response.json({
+					output: [{ type: "compaction_summary", summary: "compact" }],
+				});
+			});
+
+			await requestOpenAiRemoteCompaction(
+				makeOpenAiModel({ baseUrl: "" }),
+				"oauth-token",
+				[{ type: "message", role: "user", content: [{ type: "input_text", text: "hi" }] }],
+				"compact",
+				undefined,
+				{ authCredentialType: "oauth" },
+			);
+
+			expect(requestUrl).toBe("https://api.openai.com/v1/responses/compact");
+		} finally {
+			restore();
+		}
+	});
 });
 
 describe("requestOpenAiRemoteCompaction abort", () => {

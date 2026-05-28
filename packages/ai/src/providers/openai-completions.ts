@@ -72,7 +72,11 @@ import { joinTextWithImagePlaceholder, NON_VISION_IMAGE_PLACEHOLDER } from "./vi
 
 const OPENAI_DEFAULT_BASE_URL = "https://api.openai.com/v1";
 
-function resolveOpenAIProviderBaseUrl(baseUrl: string | undefined): string {
+function resolveOpenAIProviderBaseUrl(
+	baseUrl: string | undefined,
+	authCredentialType: "api_key" | "oauth" | undefined,
+): string {
+	if (authCredentialType === "oauth") return OPENAI_DEFAULT_BASE_URL;
 	const envBaseUrl = $env.OPENAI_BASE_URL?.trim();
 	const configuredBaseUrl = baseUrl?.trim();
 	if (envBaseUrl && (!configuredBaseUrl || configuredBaseUrl.toLowerCase().includes("api.openai.com"))) {
@@ -424,6 +428,7 @@ export const streamOpenAICompletions: StreamFunction<"openai-completions"> = (
 				options?.onSseEvent,
 				options?.fetch,
 				options?.streamFirstEventTimeoutMs,
+				options?.authCredentialType,
 			);
 			const premiumRequestsTotal = copilotPremiumRequests;
 			getCapturedErrorResponse = captureErrorResponse;
@@ -899,6 +904,7 @@ async function createClient(
 	onSseEvent?: OpenAICompletionsOptions["onSseEvent"],
 	fetchOverride?: FetchImpl,
 	streamFirstEventTimeoutOverride?: number,
+	authCredentialType?: OpenAICompletionsOptions["authCredentialType"],
 ): Promise<{
 	client: OpenAI;
 	copilotPremiumRequests: number | undefined;
@@ -942,7 +948,8 @@ async function createClient(
 	}
 	let copilotPremiumRequests: number | undefined;
 
-	let baseUrl = model.provider === "openai" ? resolveOpenAIProviderBaseUrl(model.baseUrl) : model.baseUrl;
+	let baseUrl =
+		model.provider === "openai" ? resolveOpenAIProviderBaseUrl(model.baseUrl, authCredentialType) : model.baseUrl;
 	if (model.provider === "github-copilot") {
 		apiKey = parseGitHubCopilotApiKey(rawApiKey).accessToken;
 		const hasImages = hasCopilotVisionInput(context.messages);

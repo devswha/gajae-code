@@ -146,4 +146,49 @@ describe("imageGenTool", () => {
 
 		expect(requestUrl).toBe("https://openai-proxy.example.com/v1/responses");
 	});
+
+	it("keeps OAuth OpenAI image generation on the default API base URL when OPENAI_BASE_URL is set", async () => {
+		Bun.env.OPENAI_BASE_URL = "https://openai-proxy.example.com/v1";
+		let requestUrl: string | undefined;
+
+		const fetchMock: typeof fetch = (async (input: string | URL | Request) => {
+			requestUrl = input.toString();
+			return new Response(
+				JSON.stringify({
+					output: [{ type: "image_generation_call", result: Buffer.from("fake-webp").toString("base64") }],
+				}),
+				{ status: 200, headers: { "content-type": "application/json" } },
+			);
+		}) as unknown as typeof fetch;
+		fetchMock.preconnect = originalFetch.preconnect;
+		global.fetch = fetchMock;
+
+		const model = {
+			api: "openai-responses",
+			provider: "openai",
+			id: "gpt-5.5",
+			name: "GPT 5.5",
+			baseUrl: "",
+		} as Model;
+		const ctx: CustomToolContext = {
+			sessionManager: {
+				getCwd: () => "/tmp",
+				getSessionId: () => "test-session",
+			} as unknown as ReadonlySessionManager,
+			modelRegistry: {
+				getApiKey: async () => "oauth-token",
+				getApiKeyForProvider: async () => undefined,
+				getSessionCredentialType: () => "oauth",
+			} as unknown as ModelRegistry,
+			model,
+			isIdle: () => true,
+			hasQueuedMessages: () => false,
+			abort: () => {},
+		};
+
+		const result = await imageGenTool.execute("call-1", { subject: "a cat" }, undefined, ctx);
+		generatedImagePaths.push(...(result.details?.imagePaths ?? []));
+
+		expect(requestUrl).toBe("https://api.openai.com/v1/responses");
+	});
 });

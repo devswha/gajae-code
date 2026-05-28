@@ -74,7 +74,7 @@ export function shouldUseOpenAiRemoteCompaction(model: Model): boolean {
 	return model.provider === "openai" || model.provider === "openai-codex";
 }
 
-function resolveOpenAiCompactEndpoint(model: Model): string {
+function resolveOpenAiCompactEndpoint(model: Model, authCredentialType?: "api_key" | "oauth"): string {
 	if (model.provider === "openai-codex") {
 		return resolveOpenAiCodexCompactEndpoint(model.baseUrl);
 	}
@@ -82,9 +82,11 @@ function resolveOpenAiCompactEndpoint(model: Model): string {
 	const envBaseUrl = $env.OPENAI_BASE_URL?.trim();
 	const configuredBaseUrl = model.baseUrl?.trim();
 	const rawBase =
-		envBaseUrl && (!configuredBaseUrl || configuredBaseUrl.toLowerCase().includes("api.openai.com"))
-			? envBaseUrl
-			: configuredBaseUrl || envBaseUrl || OPENAI_DEFAULT_BASE_URL;
+		authCredentialType === "oauth"
+			? OPENAI_DEFAULT_BASE_URL
+			: envBaseUrl && (!configuredBaseUrl || configuredBaseUrl.toLowerCase().includes("api.openai.com"))
+				? envBaseUrl
+				: configuredBaseUrl || envBaseUrl || OPENAI_DEFAULT_BASE_URL;
 	const normalizedBase = rawBase.endsWith("/") ? rawBase.slice(0, -1) : rawBase;
 	if (normalizedBase.endsWith("/v1")) return `${normalizedBase}/responses/compact`;
 	return `${normalizedBase}/v1/responses/compact`;
@@ -457,8 +459,9 @@ export async function requestOpenAiRemoteCompaction(
 	compactInput: Array<Record<string, unknown>>,
 	instructions: string,
 	signal?: AbortSignal,
+	options?: { authCredentialType?: "api_key" | "oauth" },
 ): Promise<OpenAiRemoteCompactionResponse> {
-	const endpoint = resolveOpenAiCompactEndpoint(model);
+	const endpoint = resolveOpenAiCompactEndpoint(model, options?.authCredentialType);
 	const request: OpenAiRemoteCompactionRequest = {
 		model: model.id,
 		input: trimOpenAiCompactInput(compactInput, model.contextWindow, instructions),
