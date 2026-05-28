@@ -40,6 +40,7 @@ import {
 	parseModelString,
 	resolveAllowedModels,
 	resolveModelRoleValue,
+	type ScopedModelSelection,
 } from "./config/model-resolver";
 import { loadPromptTemplates as loadPromptTemplatesInternal, type PromptTemplate } from "./config/prompt-templates";
 import { Settings, type SkillsSettings } from "./config/settings";
@@ -230,7 +231,7 @@ export interface CreateAgentSessionOptions {
 	/** Thinking selector. Default: from settings, else unset */
 	thinkingLevel?: ThinkingLevel;
 	/** Models available for cycling (Ctrl+P in interactive mode) */
-	scopedModels?: Array<{ model: Model; thinkingLevel?: ThinkingLevel }>;
+	scopedModels?: ScopedModelSelection[];
 
 	/** System prompt blocks. Array replaces default, function receives default blocks and returns final blocks. */
 	systemPrompt?: string[] | ((defaultPrompt: string[]) => string[]);

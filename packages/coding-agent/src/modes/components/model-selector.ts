@@ -14,7 +14,11 @@ import {
 } from "@gajae-code/tui";
 import type { GjcModelAssignmentTargetId, ModelRegistry } from "../../config/model-registry";
 import { GJC_MODEL_ASSIGNMENT_TARGET_IDS, GJC_MODEL_ASSIGNMENT_TARGETS } from "../../config/model-registry";
-import { formatModelSelectorValue, resolveModelRoleValue } from "../../config/model-resolver";
+import {
+	formatModelSelectorValue,
+	resolveModelRoleValue,
+	type ScopedModelSelection,
+} from "../../config/model-resolver";
 import type { Settings } from "../../config/settings";
 import { type ThemeColor, theme } from "../../modes/theme/theme";
 import { formatModelOnboardingInlineHint } from "../../setup/model-onboarding-guidance";
@@ -54,6 +58,7 @@ interface ModelItem {
 	model: Model;
 	selector: string;
 	thinkingLevel?: ThinkingLevel;
+	explicitThinkingLevel?: boolean;
 }
 
 interface CanonicalModelItem {
@@ -66,12 +71,10 @@ interface CanonicalModelItem {
 	normalizedSearchText: string;
 	compactSearchText: string;
 	thinkingLevel?: ThinkingLevel;
+	explicitThinkingLevel?: boolean;
 }
 
-interface ScopedModelItem {
-	model: Model;
-	thinkingLevel?: ThinkingLevel;
-}
+type ScopedModelItem = ScopedModelSelection;
 
 interface RoleAssignment {
 	model: Model;
@@ -357,6 +360,7 @@ export class ModelSelectorComponent extends Container {
 				model: scoped.model,
 				selector: `${scoped.model.provider}/${scoped.model.id}`,
 				thinkingLevel: scoped.thinkingLevel,
+				explicitThinkingLevel: scoped.explicitThinkingLevel,
 			}));
 		} else {
 			// Reload config and cached discovery state without blocking on live provider refresh
@@ -425,6 +429,10 @@ export class ModelSelectorComponent extends Container {
 				const scopedThinkingLevel = scopedThinkingBySelector.get(selectedSelector);
 				if (scopedThinkingLevel !== undefined) {
 					item.thinkingLevel = scopedThinkingLevel;
+				}
+				const scopedModel = models.find(model => `${model.model.provider}/${model.model.id}` === selectedSelector);
+				if (scopedModel?.explicitThinkingLevel !== undefined) {
+					item.explicitThinkingLevel = scopedModel.explicitThinkingLevel;
 				}
 				return item;
 			})
@@ -909,7 +917,8 @@ export class ModelSelectorComponent extends Container {
 		thinkingLevel?: ThinkingLevel,
 	): void {
 		const itemThinkingLevel = thinkingLevel ?? item.thinkingLevel;
-		if (itemThinkingLevel === undefined && requiresExplicitThinkingChoice(item.model)) {
+		const hasExplicitThinkingChoice = thinkingLevel !== undefined || item.explicitThinkingLevel === true;
+		if (!hasExplicitThinkingChoice && requiresExplicitThinkingChoice(item.model)) {
 			this.#pendingThinkingChoice = { item, role, levels: getSelectableThinkingLevels(item.model) };
 			this.#selectedThinkingIndex = 0;
 			this.#updateList();
@@ -947,21 +956,15 @@ function requiresExplicitThinkingChoice(model: Model): boolean {
 
 function getSelectableThinkingLevels(model: Model): ThinkingLevel[] {
 	const levels: ThinkingLevel[] = [ThinkingLevel.Off];
+	let efforts: readonly string[];
 	try {
-		for (const effort of getSupportedEfforts(model)) {
-			const level = parseThinkingLevel(effort);
-			if (level && !levels.includes(level)) {
-				levels.push(level);
-			}
-		}
+		efforts = getSupportedEfforts(model);
 	} catch {
-		for (const level of [
-			ThinkingLevel.Minimal,
-			ThinkingLevel.Low,
-			ThinkingLevel.Medium,
-			ThinkingLevel.High,
-			ThinkingLevel.XHigh,
-		]) {
+		return levels;
+	}
+	for (const effort of efforts) {
+		const level = parseThinkingLevel(effort);
+		if (level && !levels.includes(level)) {
 			levels.push(level);
 		}
 	}

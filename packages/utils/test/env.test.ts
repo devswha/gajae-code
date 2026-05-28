@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "bun:test";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import { filterProcessEnv, parseEnvFile } from "../src/env";
+import { filterProcessEnv, parseEnvFile, parseShellEnvFile } from "../src/env";
 
 const tempDirs: string[] = [];
 
@@ -12,10 +12,10 @@ afterEach(() => {
 	}
 });
 
-function writeTempEnv(content: string): string {
+function writeTempEnv(content: string, fileName = ".env"): string {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-utils-env-"));
 	tempDirs.push(dir);
-	const filePath = path.join(dir, ".env");
+	const filePath = path.join(dir, fileName);
 	fs.writeFileSync(filePath, content);
 	return filePath;
 }
@@ -46,6 +46,26 @@ describe("parseEnvFile", () => {
 
 		expect(parseEnvFile(filePath)).toEqual({
 			GJC_FEATURE: "enabled",
+		});
+	});
+});
+
+describe("parseShellEnvFile", () => {
+	it("loads simple exported zshrc-style OpenAI env values without executing shell code", () => {
+		const filePath = writeTempEnv(
+			[
+				"export OPENAI_BASE_URL=https://openai-proxy.example.com/v1",
+				"OPENAI_API_KEY='shell-key' # local comment",
+				"DYNAMIC_VALUE=$(secret-tool lookup service openai)",
+				"BACKTICK_VALUE=`secret-tool lookup service openai`",
+				"BAD_VALUE=before\0after",
+			].join("\n"),
+			".zshrc",
+		);
+
+		expect(parseShellEnvFile(filePath)).toEqual({
+			OPENAI_BASE_URL: "https://openai-proxy.example.com/v1",
+			OPENAI_API_KEY: "shell-key",
 		});
 	});
 });

@@ -40,6 +40,63 @@ export function filterProcessEnv(env: Record<string, string | undefined>): Recor
 	return result;
 }
 
+function stripInlineShellComment(value: string): string {
+	let quote: '"' | "'" | undefined;
+	for (let i = 0; i < value.length; i++) {
+		const char = value[i];
+		if (char === "\\") {
+			i++;
+			continue;
+		}
+		if ((char === '"' || char === "'") && (!quote || quote === char)) {
+			quote = quote ? undefined : char;
+			continue;
+		}
+		if (char === "#" && !quote && (i === 0 || /\s/.test(value[i - 1] ?? ""))) {
+			return value.slice(0, i).trimEnd();
+		}
+	}
+	return value.trimEnd();
+}
+
+/**
+ * Parses simple POSIX shell environment assignments from files such as
+ * ~/.zshrc without executing user shell code. Supports `export KEY=value` and
+ * `KEY=value`, including single/double quoted literal values. Dynamic shell
+ * expressions are intentionally ignored because evaluating startup files would
+ * run arbitrary code during CLI startup.
+ */
+export function parseShellEnvFile(filePath: string): Record<string, string> {
+	const result: Record<string, string> = {};
+	try {
+		const content = fs.readFileSync(filePath, "utf-8");
+		for (const line of content.split("\n")) {
+			const trimmed = line.trim();
+			if (!trimmed || trimmed.startsWith("#")) continue;
+
+			const match = /^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=(.*)$/.exec(trimmed);
+			if (!match) continue;
+
+			const key = match[1];
+			if (!isValidEnvName(key)) continue;
+
+			let value = stripInlineShellComment(match[2] ?? "").trim();
+			if (value.endsWith(";")) value = value.slice(0, -1).trimEnd();
+			if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+				value = value.slice(1, -1);
+			}
+			if (!isSafeEnvValue(value)) continue;
+			if (/[$`]/.test(value)) continue;
+
+			result[key] = value;
+		}
+	} catch {
+		// File doesn't exist or can't be read - return empty result
+	}
+
+	return result;
+}
+
 /**
  * Parses a .env file synchronously and extracts key-value string pairs.
  * Ignores lines that are empty or start with '#'. Trims whitespace.
@@ -79,6 +136,13 @@ export function parseEnvFile(filePath: string): Record<string, string> {
 }
 
 // Eagerly parse the user's $HOME/.env and the current project's .env (from cwd)
+const homeShellEnv = {
+	...parseShellEnvFile(path.join(os.homedir(), ".zshenv")),
+	...parseShellEnvFile(path.join(os.homedir(), ".zprofile")),
+	...parseShellEnvFile(path.join(os.homedir(), ".zshrc")),
+	...parseShellEnvFile(path.join(os.homedir(), ".bash_profile")),
+	...parseShellEnvFile(path.join(os.homedir(), ".bashrc")),
+};
 const homeEnv = parseEnvFile(path.join(os.homedir(), ".env"));
 const piEnv = parseEnvFile(path.join(getConfigRootDir(), ".env"));
 const agentEnv = parseEnvFile(path.join(getAgentDir(), ".env"));
@@ -91,7 +155,7 @@ for (const key of Object.keys(Bun.env)) {
 	}
 }
 
-for (const file of [projectEnv, agentEnv, piEnv, homeEnv]) {
+for (const file of [projectEnv, agentEnv, piEnv, homeEnv, homeShellEnv]) {
 	for (const key in file) {
 		if (!Bun.env[key]) {
 			Bun.env[key] = file[key];

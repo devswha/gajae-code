@@ -23,9 +23,13 @@ import type { Settings } from "./settings";
 /** Default model IDs for each known provider */
 export const defaultModelPerProvider: Record<KnownProvider, string> = DEFAULT_MODEL_PER_PROVIDER;
 
-export interface ScopedModel {
+export interface ScopedModelSelection {
 	model: Model<Api>;
 	thinkingLevel?: ThinkingLevel;
+	explicitThinkingLevel?: boolean;
+}
+
+export interface ScopedModel extends ScopedModelSelection {
 	explicitThinkingLevel: boolean;
 }
 

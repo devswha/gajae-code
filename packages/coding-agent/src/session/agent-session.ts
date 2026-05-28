@@ -95,6 +95,7 @@ import {
 	parseModelString,
 	type ResolvedModelRoleValue,
 	resolveModelRoleValue,
+	type ScopedModelSelection,
 } from "../config/model-resolver";
 import { expandPromptTemplate, type PromptTemplate } from "../config/prompt-templates";
 import type { Settings, SkillsSettings } from "../config/settings";
@@ -258,7 +259,7 @@ export interface AgentSessionConfig {
 	sessionManager: SessionManager;
 	settings: Settings;
 	/** Models to cycle through with Ctrl+P (from --models flag) */
-	scopedModels?: Array<{ model: Model; thinkingLevel?: ThinkingLevel }>;
+	scopedModels?: ScopedModelSelection[];
 	/** Initial session thinking selector. */
 	thinkingLevel?: ThinkingLevel;
 	/** Prompt templates for expansion */
@@ -748,7 +749,7 @@ export class AgentSession {
 
 	readonly configWarnings: string[] = [];
 
-	#scopedModels: Array<{ model: Model; thinkingLevel?: ThinkingLevel }>;
+	#scopedModels: ScopedModelSelection[];
 	#thinkingLevel: ThinkingLevel | undefined;
 	#promptTemplates: PromptTemplate[];
 	#slashCommands: FileSlashCommand[];
@@ -3749,7 +3750,7 @@ export class AgentSession {
 	}
 
 	/** Scoped models for cycling (from --models flag) */
-	get scopedModels(): ReadonlyArray<{ model: Model; thinkingLevel?: ThinkingLevel }> {
+	get scopedModels(): ReadonlyArray<ScopedModelSelection> {
 		return this.#scopedModels;
 	}
 

@@ -29,6 +29,7 @@ interface CreateSelectorOptions {
 	modelRegistry?: ModelRegistry;
 	temporaryOnly?: boolean;
 	thinkingLevel?: ThinkingLevel | null;
+	explicitThinkingLevel?: boolean;
 }
 
 function createSelector(
@@ -54,7 +55,13 @@ function createSelector(
 		requestRender: vi.fn(),
 	} as unknown as TUI;
 	const scopedModel =
-		options.thinkingLevel === null ? { model } : { model, thinkingLevel: options.thinkingLevel ?? ThinkingLevel.Off };
+		options.thinkingLevel === null
+			? { model, explicitThinkingLevel: options.explicitThinkingLevel }
+			: {
+					model,
+					thinkingLevel: options.thinkingLevel ?? ThinkingLevel.Off,
+					explicitThinkingLevel: options.explicitThinkingLevel,
+				};
 
 	return new ModelSelectorComponent(ui, model, settings, modelRegistry, [scopedModel], onSelect, () => {}, {
 		temporaryOnly: options.temporaryOnly,
@@ -442,6 +449,86 @@ describe("ModelSelector canonical model selection", () => {
 		expect(selectedAfterThinking.role).toBe("executor");
 		expect(selectedAfterThinking.thinkingLevel).toBe(ThinkingLevel.High);
 		expect(selectedAfterThinking.selector).toBe(`${model.provider}/${model.id}:high`);
+	});
+
+	test("prompts for reasoning when scoped OpenAI thinking came from defaults", async () => {
+		installTestTheme();
+		const model = createOpenAIModel("openai", "gpt-defaulted-scope-test");
+		const settings = Settings.isolated({});
+
+		let selected: SelectionCapture | undefined;
+		const selector = createSelector(
+			model,
+			settings,
+			(selectedModel, role, thinkingLevel, selectorValue) => {
+				selected = { model: selectedModel, role, thinkingLevel, selector: selectorValue };
+			},
+			{ thinkingLevel: ThinkingLevel.High, explicitThinkingLevel: false },
+		);
+		await Bun.sleep(0);
+		installTestTheme();
+
+		selector.handleInput("\n");
+		selector.handleInput("\n");
+
+		expect(selected).toBeUndefined();
+		const thinkingRendered = normalizeRenderedText(selector.render(220).join("\n"));
+		expect(thinkingRendered).toContain("Reasoning for Default");
+
+		selector.handleInput("\n");
+
+		const selectedAfterThinking = selected;
+		if (!selectedAfterThinking) throw new Error("Expected OpenAI selection after explicit off choice");
+		expect(selectedAfterThinking.role).toBe("default");
+		expect(selectedAfterThinking.thinkingLevel).toBe(ThinkingLevel.Off);
+		expect(selectedAfterThinking.selector).toBe(`${model.provider}/${model.id}`);
+	});
+
+	test("does not prompt when scoped OpenAI thinking was explicit", async () => {
+		installTestTheme();
+		const model = createOpenAIModel("openai", "gpt-explicit-scope-test");
+		const settings = Settings.isolated({});
+
+		let selected: SelectionCapture | undefined;
+		const selector = createSelector(
+			model,
+			settings,
+			(selectedModel, role, thinkingLevel, selectorValue) => {
+				selected = { model: selectedModel, role, thinkingLevel, selector: selectorValue };
+			},
+			{ thinkingLevel: ThinkingLevel.High, explicitThinkingLevel: true },
+		);
+		await Bun.sleep(0);
+		installTestTheme();
+
+		selector.handleInput("\n");
+		selector.handleInput("\n");
+
+		const selectedAfterEnter = selected;
+		if (!selectedAfterEnter) throw new Error("Expected direct explicit scoped selection");
+		expect(selectedAfterEnter.role).toBe("default");
+		expect(selectedAfterEnter.thinkingLevel).toBe(ThinkingLevel.High);
+		expect(selectedAfterEnter.selector).toBe(`${model.provider}/${model.id}`);
+	});
+
+	test("limits missing OpenAI thinking metadata to off choice", async () => {
+		installTestTheme();
+		const model = createOpenAIModel("openai", "gpt-missing-thinking-metadata");
+		model.thinking = undefined;
+		const settings = Settings.isolated({});
+
+		const selector = createSelector(model, settings, () => {}, { thinkingLevel: null });
+		await Bun.sleep(0);
+		installTestTheme();
+
+		selector.handleInput("\n");
+		selector.handleInput("\n");
+
+		const thinkingRendered = normalizeRenderedText(selector.render(220).join("\n"));
+		expect(thinkingRendered).toContain("Reasoning for Default");
+		expect(thinkingRendered).toContain("off");
+		expect(thinkingRendered).not.toContain("high");
+		expect(thinkingRendered).not.toContain("xhigh");
 	});
 
 	test("does not prompt for non-reasoning OpenAI models", async () => {

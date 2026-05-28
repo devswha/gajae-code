@@ -601,6 +601,7 @@ async function buildSessionOptions(
 			thinkingLevel: scopedModel.explicitThinkingLevel
 				? (scopedModel.thinkingLevel ?? defaultThinkingLevel)
 				: defaultThinkingLevel,
+			explicitThinkingLevel: scopedModel.explicitThinkingLevel,
 		}));
 	}
 
