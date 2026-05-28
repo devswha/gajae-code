@@ -643,6 +643,57 @@ describe("AskTool custom input", () => {
 	});
 });
 
+describe("AskTool option rendering", () => {
+	it("wraps long single-question option labels without ellipsis", async () => {
+		const theme = await getThemeByName("dark");
+		expect(theme).toBeDefined();
+		const longLabel =
+			"Wrap this long option label across multiple indented lines so the entire choice remains visible to the user";
+		const rendered = askToolRenderer.renderCall(
+			{
+				question: "Choose one",
+				options: [{ label: longLabel }, { label: "short" }],
+			},
+			{ expanded: true, isPartial: false },
+			theme!,
+		);
+		const lines = stripAnsi(rendered.render(44).join("\n")).split("\n");
+		const renderedText = lines.join("\n");
+
+		expect(renderedText).toContain("Wrap this long option label across");
+		expect(renderedText).toContain("choice remains visible");
+		expect(renderedText).not.toContain("...");
+		expect(lines.some(line => /^\s{5,}multiple indented lines/.test(line))).toBe(true);
+	});
+
+	it("wraps long multi-question option labels under their option prefix", async () => {
+		const theme = await getThemeByName("dark");
+		expect(theme).toBeDefined();
+		const longLabel =
+			"Keep every multi question option fully readable by wrapping continuation text under the checkbox prefix";
+		const rendered = askToolRenderer.renderCall(
+			{
+				questions: [
+					{
+						id: "render",
+						question: "Choose one",
+						options: [{ label: longLabel }, { label: "short" }],
+					},
+				],
+			},
+			{ expanded: true, isPartial: false },
+			theme!,
+		);
+		const lines = stripAnsi(rendered.render(48).join("\n")).split("\n");
+		const renderedText = lines.join("\n");
+
+		expect(renderedText).toContain("Keep every multi question option fully");
+		expect(renderedText).toContain("under the checkbox prefix");
+		expect(renderedText).not.toContain("...");
+		expect(lines.some(line => /^\s{8,}.*readable by wrapping/.test(line))).toBe(true);
+	});
+});
+
 describe("AskTool multiline custom input rendering", () => {
 	it("renders multiline custom answer as one block, not multiple checked items", async () => {
 		const tool = new AskTool(createSession());

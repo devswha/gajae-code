@@ -16,7 +16,16 @@
  */
 
 import type { AgentTool, AgentToolContext, AgentToolResult, AgentToolUpdateCallback } from "@gajae-code/agent-core";
-import { type Component, Container, Markdown, renderInlineMarkdown, TERMINAL, Text } from "@gajae-code/tui";
+import {
+	type Component,
+	Container,
+	Markdown,
+	renderInlineMarkdown,
+	TERMINAL,
+	Text,
+	visibleWidth,
+	wrapTextWithAnsi,
+} from "@gajae-code/tui";
 import { prompt, untilAborted } from "@gajae-code/utils";
 import * as z from "zod/v4";
 import type { RenderResultOptions } from "../extensibility/custom-tools/types";
@@ -598,6 +607,31 @@ function renderCustomInput(
 	return text;
 }
 
+interface RenderOptionListEntry {
+	prefix: string;
+	label: string;
+}
+
+class AskOptionList implements Component {
+	constructor(private readonly entries: RenderOptionListEntry[]) {}
+
+	render(width: number): string[] {
+		const lines: string[] = [];
+		for (const entry of this.entries) {
+			const prefixWidth = visibleWidth(entry.prefix);
+			const availableWidth = Math.max(1, width - prefixWidth);
+			const wrapped = wrapTextWithAnsi(entry.label, availableWidth);
+			const continuation = " ".repeat(prefixWidth);
+			for (let i = 0; i < wrapped.length; i++) {
+				lines.push(`${i === 0 ? entry.prefix : continuation}${wrapped[i]}`);
+			}
+		}
+		return lines;
+	}
+
+	invalidate(): void {}
+}
+
 export const askToolRenderer = {
 	renderCall(args: AskRenderArgs, _options: RenderResultOptions, uiTheme: Theme): Component {
 		const label = formatTitle("Ask", uiTheme);
@@ -625,16 +659,18 @@ export const askToolRenderer = {
 				);
 				container.addChild(new Markdown(q.question, 3, 0, mdTheme, accentStyle));
 
-				if (q.options?.length) {
-					let optText = "";
-					for (let j = 0; j < q.options.length; j++) {
-						const opt = q.options[j];
-						const isLastOpt = j === q.options.length - 1;
+				const qOptions = q.options;
+				if (qOptions?.length) {
+					const entries = qOptions.map((opt, j) => {
+						const isLastOpt = j === qOptions.length - 1;
 						const optBranch = isLastOpt ? uiTheme.tree.last : uiTheme.tree.branch;
 						const optLabel = renderInlineMarkdown(opt.label, mdTheme, t => uiTheme.fg("muted", t));
-						optText += `\n ${uiTheme.fg("dim", continuation)}   ${uiTheme.fg("dim", optBranch)} ${uiTheme.fg("dim", uiTheme.checkbox.unchecked)} ${optLabel}`;
-					}
-					container.addChild(new Text(optText, 0, 0));
+						return {
+							prefix: ` ${uiTheme.fg("dim", continuation)}   ${uiTheme.fg("dim", optBranch)} ${uiTheme.fg("dim", uiTheme.checkbox.unchecked)} `,
+							label: optLabel,
+						};
+					});
+					container.addChild(new AskOptionList(entries));
 				}
 			}
 			return container;
@@ -652,16 +688,18 @@ export const askToolRenderer = {
 		container.addChild(new Text(`${label}${formatMeta(meta, uiTheme)}`, 0, 0));
 		container.addChild(new Markdown(args.question, 1, 0, mdTheme, accentStyle));
 
-		if (args.options?.length) {
-			let optText = "";
-			for (let i = 0; i < args.options.length; i++) {
-				const opt = args.options[i];
-				const isLast = i === args.options.length - 1;
+		const options = args.options;
+		if (options?.length) {
+			const entries = options.map((opt, i) => {
+				const isLast = i === options.length - 1;
 				const branch = isLast ? uiTheme.tree.last : uiTheme.tree.branch;
 				const optLabel = renderInlineMarkdown(opt.label, mdTheme, t => uiTheme.fg("muted", t));
-				optText += `\n ${uiTheme.fg("dim", branch)} ${uiTheme.fg("dim", uiTheme.checkbox.unchecked)} ${optLabel}`;
-			}
-			container.addChild(new Text(optText, 0, 0));
+				return {
+					prefix: ` ${uiTheme.fg("dim", branch)} ${uiTheme.fg("dim", uiTheme.checkbox.unchecked)} `,
+					label: optLabel,
+				};
+			});
+			container.addChild(new AskOptionList(entries));
 		}
 
 		return container;

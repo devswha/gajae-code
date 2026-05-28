@@ -60,11 +60,11 @@ Inspired by the [Ouroboros project](https://github.com/Q00/ouroboros) which demo
 
 ## Native Plugin Invocation Guard (Issue #3030)
 
-If this raw bundled skill is loaded by GJC's native skill loader through `/gajae-code:deep-interview` or `Skill("gajae-code:deep-interview")`, do not treat that path as permission to skip rendered GJC setup. The user-facing invocation is `/skill:deep-interview`; do not recommend or advertise `/deep-interview` or `/gajae-code:deep-interview` as the deep-interview entrypoint. Regardless of invocation path, Phase 0 below remains blocking and must resolve `gjc.deepInterview.ambiguityThreshold` from settings before any announcement, state write, question, or ambiguity score.
+If this raw bundled skill is loaded by GJC's native skill loader through `/skill:deep-interview` or `gjc deep-interview`, do not treat that path as permission to skip rendered GJC setup. The user-facing invocation is `/skill:deep-interview`; do not recommend or advertise deprecated aliases as the deep-interview entrypoint. Regardless of invocation path, Phase 0 below remains blocking and must resolve `gjc.deepInterview.ambiguityThreshold` from settings before any announcement, state write, question, or ambiguity score.
 
 ## Phase 0: Resolve Ambiguity Threshold (blocking prerequisite)
 
-Complete this phase before Phase 1, before brownfield exploration, before `state_write`, before Round 0, and before any ambiguity scoring. Do not continue if the resolved threshold and source are unknown.
+Complete this phase before Phase 1, before brownfield exploration, before GJC state persistence, before Round 0, and before any ambiguity scoring. Do not continue if the resolved threshold and source are unknown.
 
 1. **Read threshold settings in precedence order**:
    - User settings: `[$GJC_CONFIG_DIR|~/.gjc]/settings.json`
@@ -81,7 +81,7 @@ Deep Interview threshold: <resolvedThresholdPercent> (source: <resolvedThreshold
 
 4. **Carry threshold source forward mechanically**:
    - Substitute `<resolvedThreshold>`, `<resolvedThresholdPercent>`, and `<resolvedThresholdSource>` throughout the remaining instructions before continuing.
-   - Include `threshold_source` in the first `state_write(mode="deep-interview")` state payload and preserve it on later state updates.
+   - Include `threshold_source` in the first `gjc state write` payload (or `.gjc/state/` state file) and preserve it on later state updates.
    - Include both threshold and source in the final spec metadata.
 
 ## Phase 1: Initialize
@@ -106,9 +106,9 @@ Deep Interview threshold: <resolvedThresholdPercent> (source: <resolvedThreshold
    - Wait until the summary exists before ambiguity scoring, weakest-dimension selection, brownfield exploration prompts, or any bridge to `ralplan`, `execution`, `execution`, or `team`.
 3.7. **Artifact path discipline**:
    - Final specs MUST be written to `.gjc/specs/deep-interview-{slug}.md` exactly.
-   - Ephemeral interview artifacts (scoring scratchpads, prompt-safe summaries, transient queues, resume metadata) belong in `.gjc/state/` or in `state_write` state, never in the repo root or arbitrary working files.
+   - Ephemeral interview artifacts (scoring scratchpads, prompt-safe summaries, transient queues, resume metadata) belong in `.gjc/state/` or via `gjc state write` when available, never in the repo root or arbitrary working files.
 
-4. **Initialize state** via `state_write(mode="deep-interview")`:
+4. **Initialize state** via `gjc state write` when available, otherwise by writing the deep-interview state under `.gjc/state/`:
 
 ```json
 {
@@ -226,7 +226,7 @@ Build the question generation prompt with:
 - Brownfield codebase context (if applicable), summarized to cited paths/symbols/patterns instead of raw dumps
 - Locked topology from Round 0, including active components, deferred components, prior per-component scores, and `last_targeted_component_id`
 
-If any prompt input is too large, summarize it first and then continue from the summary. Do not ask the next `AskUserQuestion`, score ambiguity, or hand off to execution from an over-budget raw transcript.
+If any prompt input is too large, summarize it first and then continue from the summary. Do not ask the next the `ask` tool, score ambiguity, or hand off to execution from an over-budget raw transcript.
 
 **Question targeting strategy:**
 - Identify the active component + dimension pair with the LOWEST clarity score across the locked topology
@@ -247,7 +247,7 @@ If any prompt input is too large, summarize it first and then continue from the 
 
 ### Step 2b: Ask the Question
 
-Use `AskUserQuestion` with the generated question. Present it clearly with the current ambiguity context:
+Use the `ask` tool with the generated question. Present it clearly with the current ambiguity context:
 
 ```
 Round {n} | Component: {target_component_name} | Targeting: {weakest_dimension} | Why now: {one_sentence_targeting_rationale} | Ambiguity: {score}%
@@ -354,7 +354,7 @@ Round {n} complete.
 
 ### Step 2e: Update State
 
-Update interview state with the new round, global scores, per-component `topology.components[].clarity_scores`, `topology.components[].weakest_dimension`, ontology snapshot, and `topology.last_targeted_component_id` via `state_write`.
+Update interview state with the new round, global scores, per-component `topology.components[].clarity_scores`, `topology.components[].weakest_dimension`, ontology snapshot, and `topology.last_targeted_component_id` via `gjc state write`.
 
 ### Step 2f: Check Soft Limits
 
@@ -388,7 +388,7 @@ When ambiguity ≤ threshold (or hard cap / early exit):
 1. **Generate the specification** using opus model with the prompt-safe transcript. If the full interview transcript or initial context is too large, include the summary plus all concrete decisions, acceptance criteria, unresolved gaps, and ontology snapshots; never overflow the prompt with raw oversized context.
 2. **Write to file**: `.gjc/specs/deep-interview-{slug}.md`
    - Always use this exact final spec path. Do not write temporary working files to the repo root or other ad hoc paths; repos may allowlist `.gjc/` for planning artifacts while protecting product branches.
-   - For ephemeral artifacts during interview rounds (for example scoring intermediate results, prompt-safe summaries, question queues, or resume metadata), use `.gjc/state/` or in-memory state via `state_write`.
+   - For ephemeral artifacts during interview rounds (for example scoring intermediate results, prompt-safe summaries, question queues, or resume metadata), use `.gjc/state/` or in-memory state via `gjc state write`.
    - Persist the final `spec_path` in state when available so downstream skills and resumed sessions can pass the artifact path explicitly.
 
 Spec structure:
@@ -483,9 +483,9 @@ Spec structure:
 
 ## Phase 5: Execution Bridge
 
-**Research workflow override:** if `--research-setup` is active, skip the standard execution options below. The only valid bridge is the `Skill("gajae-code:research workflow")` handoff described above. The `gjc research workflow` CLI is a hard-deprecated shim and must not be used for execution.
+**Research workflow override:** if `--research-setup` is active, skip the standard execution options below and write a pending-approval spec that names research setup as an unresolved follow-up. Do not invoke deprecated research workflow shims.
 
-After the spec is written, mark it `pending approval` and present execution options via `AskUserQuestion`. Until the user selects an execution option, the deep-interview module MUST NOT run mutation-oriented shell commands, edit source files, commit, push, open PRs, invoke execution skills, or delegate implementation tasks:
+After the spec is written, mark it `pending approval` and present execution options via the `ask` tool. Until the user selects an execution option, the deep-interview module MUST NOT run mutation-oriented shell commands, edit source files, commit, push, open PRs, invoke execution skills, or delegate implementation tasks:
 
 **Question:** "Your spec is ready (ambiguity: {score}%). How would you like to proceed?"
 
@@ -493,26 +493,26 @@ After the spec is written, mark it `pending approval` and present execution opti
 
 1. **Refine with ralplan consensus (Recommended)**
    - Description: "Consensus-refine this spec with Planner/Architect/Critic, then stop for explicit execution approval. Maximum quality."
-   - Action: Only after the user selects this option, invoke `Skill("gajae-code:plan")` with `--consensus --direct` flags and the spec file path as context. The `--direct` flag skips the ralplan skill's interview phase (the deep interview already gathered requirements), while `--consensus` triggers the Planner/Architect/Critic loop. When consensus completes and produces a plan in `.gjc/plans/`, stop with that plan marked `pending approval`; do not automatically invoke execution or any other execution skill.
+   - Action: Only after the user selects this option, invoke `/skill:ralplan` or `gjc ralplan --consensus --direct` with the spec file path as context. The `--direct` flag skips the ralplan skill's interview phase (the deep interview already gathered requirements), while `--consensus` triggers the Planner/Architect/Critic loop. When consensus completes and produces a plan in `.gjc/plans/`, stop with that plan marked `pending approval`; do not automatically invoke execution or any other execution skill.
    - Pipeline: `deep-interview spec → explicit approval to refine → ralplan --consensus --direct → pending approval → separate execution approval`
 
 2. **Execute with team**
    - Description: "Full autonomous pipeline — planning, parallel implementation, QA, validation. Faster but without consensus refinement."
-   - Action: Invoke `Skill("gajae-code:execution")` with the spec file path as context only after the user explicitly selects this execution option. The spec replaces execution's Phase 0 — execution starts at Phase 1 (Planning).
+   - Action: Invoke `/skill:team` or `gjc team` with the spec file path as context only after the user explicitly selects this execution option. The spec replaces team planning input.
 
 3. **Execute with team**
    - Description: "Persistence loop with architect verification — keeps working until all acceptance criteria pass"
-   - Action: Invoke `Skill("gajae-code:execution")` with the spec file path as the task definition.
+   - Action: Invoke `/skill:team` or `gjc team` with the spec file path as the task definition.
 
 4. **Execute with team**
    - Description: "N coordinated parallel agents — fastest execution for large specs"
-   - Action: Invoke `Skill("gajae-code:team")` with the spec file path as the shared plan.
+   - Action: Invoke `/skill:team` or `gjc team` with the spec file path as the shared plan.
 
 5. **Refine further**
    - Description: "Continue interviewing to improve clarity (current: {score}%)"
    - Action: Return to Phase 2 interview loop.
 
-**IMPORTANT:** On explicit execution selection, **MUST** invoke the chosen skill via `Skill()`. Do NOT implement directly. The deep-interview agent is a requirements agent, not an execution agent. If oversized initial context was summarized, pass the spec and prompt-safe summary forward, not the raw oversized source material. Without explicit execution selection, stop with the spec marked `pending approval`.
+**IMPORTANT:** On explicit execution selection, **MUST** use the chosen public GJC workflow entrypoint (`/skill:ralplan`, `/skill:team`, `gjc ralplan`, or `gjc team`). Do NOT implement directly. The deep-interview agent is a requirements agent, not an execution agent. If oversized initial context was summarized, pass the spec and prompt-safe summary forward, not the raw oversized source material. Without explicit execution selection, stop with the spec marked `pending approval`.
 
 ### Approval-Gated Refinement Path (Recommended)
 
@@ -541,14 +541,14 @@ Skipping any stage is possible but reduces quality assurance:
 </Steps>
 
 <Tool_Usage>
-- Use `AskUserQuestion` for each interview question — provides clickable UI with contextual options
-- Preserve the AskUserQuestion path for GJC-native interaction; do not introduce GJC-only structured-question transport into this skill
-- Use `Task(subagent_type="gajae-code:explore", model="haiku")` for brownfield codebase exploration (run BEFORE asking user about codebase)
+- Use the `ask` tool for each interview question — provides clickable UI with contextual options
+- Preserve the GJC `ask` tool path for native interaction; do not introduce parallel structured-question transport into this skill
+- Use `read/search/find exploration or a bounded read-only planner/architect subagent` for brownfield codebase exploration (run BEFORE asking user about codebase)
 - Use opus model (temperature 0.1) for ambiguity scoring — consistency is critical
 - Round 0 topology confirmation happens before ambiguity scoring; Phase 2 scoring must honor locked topology and rotate targeting across active components when more than one is present
-- Use `state_write` / `state_read` for interview state persistence; the initial and subsequent deep-interview state payloads must include `threshold_source` alongside `threshold`
-- Use `Write` tool to save the final spec to `.gjc/specs/deep-interview-{slug}.md` exactly; use `.gjc/state/` or `state_write` for ephemeral artifacts
-- Use `Skill()` to bridge to execution modes only after explicit execution approval — never implement directly
+- Use `gjc state write` / `gjc state read` for interview state persistence; the initial and subsequent deep-interview state payloads must include `threshold_source` alongside `threshold`
+- Use the `write` tool to save the final spec to `.gjc/specs/deep-interview-{slug}.md` exactly; use `.gjc/state/` or `gjc state write` for ephemeral artifacts
+- Use public GJC workflow entrypoints to bridge to ralplan/team only after explicit execution approval — never implement directly
 - Challenge agent modes are prompt injections, not separate agent spawns
 </Tool_Usage>
 
@@ -671,12 +671,12 @@ Why bad: 45% ambiguity means nearly half the requirements are unclear. The mathe
 - [ ] Ambiguity score displayed after every round
 - [ ] Every round explicitly names the weakest dimension and why it is the next target
 - [ ] Challenge agents activated at correct thresholds (round 4, 6, 8)
-- [ ] Spec file written to `.gjc/specs/deep-interview-{slug}.md` exactly; ephemeral artifacts stayed under `.gjc/state/` or `state_write`
+- [ ] Spec file written to `.gjc/specs/deep-interview-{slug}.md` exactly; ephemeral artifacts stayed under `.gjc/state/` or `gjc state write`
 - [ ] Spec includes: topology, goal, constraints, acceptance criteria, clarity breakdown, transcript
-- [ ] Execution bridge presented via AskUserQuestion
-- [ ] Selected execution mode invoked via Skill() only after explicit execution approval (never direct implementation)
+- [ ] Execution bridge presented via the `ask` tool
+- [ ] Selected execution mode invoked via public GJC workflow entrypoint only after explicit execution approval (never direct implementation)
 - [ ] If 3-stage pipeline selected: ralplan --consensus --direct invoked, then stopped with the consensus plan marked `pending approval` until the user explicitly approves execution
-- [ ] State cleaned up after execution handoff
+- [ ] State cleaned up after approved workflow handoff
 - [ ] Brownfield confirmation questions cite repo evidence (file/path/pattern) before asking the user to decide
 - [ ] Scope-fuzzy tasks can trigger ontology-style questioning to stabilize the core entity before feature elaboration
 - [ ] Round 0 topology gate completed before ambiguity scoring and persisted `topology.confirmed_at`
@@ -712,17 +712,17 @@ Optional settings in `.gjc/settings.json`:
 
 If interrupted, run `/skill:deep-interview` again. The skill reads state from `.gjc/state/deep-interview-state.json` and resumes from the last completed round.
 
-## Integration with Staged execution
+## Integration with staged team routing
 
 When team receives a vague input (no file paths, function names, or concrete anchors), it can redirect to deep-interview:
 
 ```
 User: "team build me a thing"
-Staged execution: "Your request is quite open-ended. Would you like to run a deep interview first to clarify requirements?"
+Team routing: "Your request is quite open-ended. Would you like to run a deep interview first to clarify requirements?"
   [Yes, interview first] [No, expand directly]
 ```
 
-If the user chooses interview, execution invokes `/skill:deep-interview`. When the interview completes and the user selects "Execute with team", the spec becomes Phase 0 output and execution continues from Phase 1 (Planning).
+If the user chooses interview, team routing invokes `/skill:deep-interview`. When the interview completes and the user selects "Execute with team", the spec becomes Phase 0 output and team proceeds from the approved spec.
 
 ## Approval-Gated Pipeline: deep-interview → ralplan → pending approval
 
@@ -753,7 +753,7 @@ The recommended refinement path chains clarity and feasibility gates, then stops
 
 ## Integration with Ralplan Gate
 
-The ralplan pre-execution gate already redirects vague prompts to planning. Deep interview can serve as an alternative redirect target for prompts that are too vague even for ralplan:
+The ralplan pre-approval gate already redirects vague prompts to planning. Deep interview can serve as an alternative redirect target for prompts that are too vague even for ralplan:
 
 ```
 Vague prompt → ralplan gate → deep-interview (if extremely vague) → ralplan (with clear spec) → pending approval → explicitly approved execution

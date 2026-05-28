@@ -167,6 +167,7 @@ import {
 import { deobfuscateSessionContext, type SecretObfuscator } from "../secrets/obfuscator";
 import { formatNoCredentialOnboardingError, formatNoModelOnboardingError } from "../setup/model-onboarding-guidance";
 import { isCanonicalGjcWorkflowSkill, syncSkillActiveState } from "../skill-state/active-state";
+import { assertDeepInterviewMutationAllowed } from "../skill-state/deep-interview-mutation-guard";
 import { invalidateHostMetadata } from "../ssh/connection-manager";
 import { resolveThinkingLevelForModel, toReasoningEffort } from "../thinking";
 import {
@@ -3273,6 +3274,35 @@ export class AgentSession {
 		}) as T;
 	}
 
+	/**
+	 * Wrap a tool with the deep-interview mutation guard. This guard is intentionally
+	 * outermost so active interviews reject product-code mutation before ACP permission
+	 * prompts or tool execution can run.
+	 */
+	#wrapToolForDeepInterviewMutationGuard<T extends AgentTool>(tool: T): T {
+		if (!["edit", "write", "ast_edit"].includes(tool.name)) return tool;
+		return new Proxy(tool, {
+			get: (target, prop) => {
+				if (prop !== "execute") return Reflect.get(target, prop, target);
+				return async (
+					toolCallId: string,
+					args: unknown,
+					signal: AbortSignal | undefined,
+					onUpdate: never,
+					ctx: never,
+				) => {
+					await assertDeepInterviewMutationAllowed({
+						cwd: this.sessionManager.getCwd(),
+						sessionId: this.sessionManager.getSessionId(),
+						tool: target,
+						args,
+					});
+					return await target.execute(toolCallId, args as never, signal, onUpdate, ctx);
+				};
+			},
+		}) as T;
+	}
+
 	async #applyActiveToolsByName(
 		toolNames: string[],
 		options?: { persistMCPSelection?: boolean; previousSelectedMCPToolNames?: string[] },
@@ -3284,7 +3314,7 @@ export class AgentSession {
 		for (const name of toolNames) {
 			const tool = this.#toolRegistry.get(name);
 			if (tool) {
-				tools.push(this.#wrapToolForAcpPermission(tool));
+				tools.push(this.#wrapToolForDeepInterviewMutationGuard(this.#wrapToolForAcpPermission(tool)));
 				validToolNames.push(name);
 			}
 		}

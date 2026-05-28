@@ -184,6 +184,30 @@ Project executor override body.
 		expect(ultragoal).toContain("become unrecoverably wrong");
 	});
 
+	it("keeps bundled deep-interview skill on GJC-native workflow vocabulary", () => {
+		const deepInterview = getDefaultGjcDefinitions().find(definition => definition.name === "deep-interview");
+		expect(deepInterview).toBeDefined();
+		const content = deepInterview?.content ?? "";
+
+		for (const required of ["ask", ".gjc/state", "pending approval"]) {
+			expect(content).toContain(required);
+		}
+		expect(content).toMatch(/\/skill:ralplan|gjc ralplan/);
+		expect(content).toMatch(/\/skill:team|gjc team/);
+
+		for (const forbidden of [
+			"AskUserQuestion",
+			"AskUserQuestionTool",
+			"state_write",
+			"state_read",
+			"Skill(",
+			"gajae-code:",
+			"/gajae-code",
+		]) {
+			expect(content).not.toContain(forbidden);
+		}
+	});
+
 	it("installs bundled workflow skill definitions without overwriting local edits unless forced", async () => {
 		const targetRoot = await makeTempRoot();
 		const initial = await installDefaultGjcDefinitions({ targetRoot });
