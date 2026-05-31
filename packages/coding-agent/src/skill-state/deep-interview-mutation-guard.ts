@@ -7,12 +7,11 @@ import { ToolError } from "../tools/tool-errors";
 import { listActiveSkills, readVisibleSkillActiveState, type SkillActiveEntry } from "./active-state";
 
 export const DEEP_INTERVIEW_MUTATION_BLOCK_MESSAGE =
-	"Deep-interview is active; either continue interviewing with `ask`, or write/finalize the pending spec under `.gjc/specs/` / update state under `.gjc/state/`. Do not edit product code until explicit execution approval.";
+	"Deep-interview is active; continue interviewing with `ask`, write/finalize pending specs through the required GJC workflow CLI, or use an explicit force override. Direct `.gjc/` and product-code edits are blocked until explicit execution approval.";
 
 const BLOCKED_TOOL_NAMES = new Set(["edit", "write", "ast_edit"]);
 const ARCHIVE_OR_SQLITE_BASE_RE = /^(.+?\.(?:tar\.gz|sqlite3|sqlite|db3|zip|tgz|tar|db))(?:$|:)/i;
 const INTERNAL_SCHEME_RE = /^[a-z][a-z0-9+.-]*:\/\//i;
-const GLOB_META_RE = /[*?[\]{}]/;
 const VIM_FILE_SWITCH_RE = /^\s*:(?:e|e!|edit|edit!)(?:\s+([^<\r\n]+))?(?:<CR>|\r|\n|$)/i;
 
 type ToolWithEditMode = AgentTool & {
@@ -26,6 +25,7 @@ export interface DeepInterviewMutationGuardInput {
 	threadId?: string;
 	tool: ToolWithEditMode;
 	args: unknown;
+	forceOverride?: boolean;
 }
 
 interface ExtractedTargets {
@@ -246,23 +246,18 @@ function resolveRawPath(cwd: string, rawPath: string): { absolutePath?: string; 
 	}
 }
 
-function isAllowlistedPath(cwd: string, rawPath: string): boolean {
+function isGjcManagedPath(cwd: string, rawPath: string): boolean {
 	const { absolutePath, unknown } = resolveRawPath(cwd, rawPath);
 	if (unknown || !absolutePath) return false;
 	const relative = path.relative(path.resolve(cwd), path.resolve(absolutePath));
 	if (relative === "" || relative.startsWith("..") || path.isAbsolute(relative)) return false;
 	const segments = normalizePosix(relative).split("/").filter(Boolean);
-	return segments[0] === ".gjc" && (segments[1] === "specs" || segments[1] === "state");
+	return segments[0] === ".gjc";
 }
 
-function allTargetsAllowlisted(cwd: string, targets: ExtractedTargets): boolean {
+function hasGjcManagedTarget(cwd: string, targets: ExtractedTargets): boolean {
 	if (targets.unknown || targets.paths.length === 0) return false;
-	return targets.paths.every(rawPath => {
-		if (GLOB_META_RE.test(rawPath)) {
-			return isAllowlistedPath(cwd, rawPath);
-		}
-		return isAllowlistedPath(cwd, rawPath);
-	});
+	return targets.paths.some(rawPath => isGjcManagedPath(cwd, rawPath));
 }
 
 export async function assertDeepInterviewMutationRawPathsAllowed(input: {
@@ -270,10 +265,12 @@ export async function assertDeepInterviewMutationRawPathsAllowed(input: {
 	sessionId?: string;
 	threadId?: string;
 	rawPaths: string[];
+	forceOverride?: boolean;
 }): Promise<void> {
+	if (input.forceOverride) return;
 	if (!(await isActiveDeepInterview(input.cwd, input.sessionId, input.threadId))) return;
 	const targets: ExtractedTargets = { paths: input.rawPaths, unknown: input.rawPaths.length === 0 };
-	if (!allTargetsAllowlisted(input.cwd, targets)) {
+	if (hasGjcManagedTarget(input.cwd, targets)) {
 		throw new ToolError(DEEP_INTERVIEW_MUTATION_BLOCK_MESSAGE);
 	}
 }
@@ -285,15 +282,16 @@ export async function getDeepInterviewMutationDecision(
 	if (!(await isActiveDeepInterview(input.cwd, input.sessionId, input.threadId))) {
 		return { blocked: false, targets: [] };
 	}
+	if (input.forceOverride) return { blocked: false, targets: [] };
 	const targets = extractTargets(input.tool, input.args);
-	if (allTargetsAllowlisted(input.cwd, targets)) {
+	if (!hasGjcManagedTarget(input.cwd, targets)) {
 		return { blocked: false, targets: targets.paths };
 	}
 	return {
 		blocked: true,
 		message: DEEP_INTERVIEW_MUTATION_BLOCK_MESSAGE,
 		targets: targets.paths,
-		reason: targets.unknown ? "unknown-target" : "product-target",
+		reason: targets.unknown ? "unknown-target" : "gjc-managed-target",
 	};
 }
 

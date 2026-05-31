@@ -212,6 +212,8 @@ Project executor override body.
 		expect(content).toContain("/skill:ralplan");
 		expect(content).toContain("/skill:team");
 		expect(content).toContain("private runtime bridge");
+		expect(content).toContain("Direct `.gjc/` file edits are forbidden");
+		expect(content).toContain("do not edit `.gjc/state` directly without force override");
 
 		for (const forbidden of [
 			"AskUserQuestion",
@@ -225,6 +227,21 @@ Project executor override body.
 		]) {
 			expect(content).not.toContain(forbidden);
 		}
+	});
+
+	it("keeps bundled ralplan stage artifacts on CLI write path", () => {
+		const ralplan = getDefaultGjcDefinitions().find(definition => definition.name === "ralplan");
+		expect(ralplan).toBeDefined();
+		const content = ralplan?.content ?? "";
+
+		expect(content).toContain("gjc ralplan --write --stage <type> --stage_n <N> --artifact");
+		expect(content).toContain("--stage planner");
+		expect(content).toContain("--stage architect");
+		expect(content).toContain("--stage critic");
+		expect(content).toContain("do not directly edit `.gjc/plans`");
+		expect(content).toContain(
+			"Direct `write`, `edit`, or `ast_edit` calls against `.gjc/specs`, `.gjc/plans`, `.gjc/state`, or any other `.gjc/` path are forbidden",
+		);
 	});
 
 	it("installs bundled workflow skill definitions without overwriting local edits unless forced", async () => {

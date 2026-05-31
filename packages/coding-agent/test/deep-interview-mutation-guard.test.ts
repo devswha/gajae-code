@@ -65,7 +65,7 @@ afterEach(async () => {
 });
 
 describe("deep-interview mutation guard", () => {
-	it("blocks product write/edit/ast_edit targets while deep-interview is active", async () => {
+	it("allows product write/edit/ast_edit targets while deep-interview is active", async () => {
 		const cwd = await makeTempRoot();
 		await writeActiveDeepInterview(cwd);
 
@@ -80,16 +80,15 @@ describe("deep-interview mutation guard", () => {
 				tool: tool(name),
 				args,
 			});
-			expect(decision.blocked).toBe(true);
-			expect(decision.message).toBe(DEEP_INTERVIEW_MUTATION_BLOCK_MESSAGE);
+			expect(decision.blocked).toBe(false);
 		}
 	});
 
-	it("allows .gjc/specs and .gjc/state targets while deep-interview is active", async () => {
+	it("blocks direct .gjc targets while deep-interview is active", async () => {
 		const cwd = await makeTempRoot();
 		await writeActiveDeepInterview(cwd);
 
-		const allowedCases: Array<[string, AgentTool, unknown]> = [
+		const blockedCases: Array<[string, AgentTool, unknown]> = [
 			["write spec", tool("write"), { path: ".gjc/specs/deep-interview-x.md", content: "x" }],
 			["write state", tool("write"), { path: ".gjc/state/deep-interview-x.json", content: "{}" }],
 			[
@@ -112,30 +111,39 @@ describe("deep-interview mutation guard", () => {
 			["ast_edit state", tool("ast_edit"), { paths: [".gjc/state/**/*.md"], ops: [{ pat: "foo", out: "bar" }] }],
 		];
 
-		for (const [, targetTool, args] of allowedCases) {
+		for (const [, targetTool, args] of blockedCases) {
 			const decision = await getDeepInterviewMutationDecision({
 				cwd,
 				sessionId: "session-a",
 				tool: targetTool,
 				args,
 			});
-			expect(decision.blocked).toBe(false);
+			expect(decision.blocked).toBe(true);
+			expect(decision.message).toBe(DEEP_INTERVIEW_MUTATION_BLOCK_MESSAGE);
 		}
 	});
 
-	it("rejects path containment bypasses and mixed target sets", async () => {
+	it("allows non-.gjc paths and blocks .gjc-prefixed target sets", async () => {
 		const cwd = await makeTempRoot();
 		await writeActiveDeepInterview(cwd);
 
 		for (const rawPath of [
-			".gjc/specs-evil/plan.md",
-			".gjc/stateful/data.json",
 			"../outside.md",
 			path.join(os.tmpdir(), "outside-gjc-plan.md"),
 			"agent://123",
 			"product/archive.zip:product.ts",
 			"data.sqlite:rows:1",
 		]) {
+			const decision = await getDeepInterviewMutationDecision({
+				cwd,
+				sessionId: "session-a",
+				tool: tool("write"),
+				args: { path: rawPath, content: "x" },
+			});
+			expect(decision.blocked).toBe(false);
+		}
+
+		for (const rawPath of [".gjc/specs-evil/plan.md", ".gjc/stateful/data.json"]) {
 			const decision = await getDeepInterviewMutationDecision({
 				cwd,
 				sessionId: "session-a",
@@ -154,7 +162,7 @@ describe("deep-interview mutation guard", () => {
 		expect(mixed.blocked).toBe(true);
 	});
 
-	it("blocks vim file-switch bypasses", async () => {
+	it("blocks vim file-switches into .gjc", async () => {
 		const cwd = await makeTempRoot();
 		await writeActiveDeepInterview(cwd);
 
@@ -163,8 +171,8 @@ describe("deep-interview mutation guard", () => {
 			sessionId: "session-a",
 			tool: tool("edit", { mode: "vim" }),
 			args: {
-				file: ".gjc/specs/deep-interview-x.md",
-				steps: [{ kbd: [":edit packages/coding-agent/src/product.ts<CR>", "iunsafe"] }],
+				file: "packages/coding-agent/src/product.ts",
+				steps: [{ kbd: [":edit .gjc/specs/deep-interview-x.md<CR>", "iunsafe"] }],
 			},
 		});
 
@@ -185,7 +193,7 @@ describe("deep-interview mutation guard", () => {
 		expect(decision.blocked).toBe(false);
 	});
 
-	it("guards deferred ast_edit apply targets while deep-interview is active", async () => {
+	it("guards deferred ast_edit apply .gjc targets unless force override is explicit", async () => {
 		const cwd = await makeTempRoot();
 		await writeActiveDeepInterview(cwd);
 
@@ -193,7 +201,7 @@ describe("deep-interview mutation guard", () => {
 			assertDeepInterviewMutationRawPathsAllowed({
 				cwd,
 				sessionId: "session-a",
-				rawPaths: ["packages/coding-agent/src/product.ts"],
+				rawPaths: [".gjc/specs/deep-interview-x.md"],
 			}),
 		).rejects.toBeInstanceOf(ToolError);
 		await expect(
@@ -201,6 +209,7 @@ describe("deep-interview mutation guard", () => {
 				cwd,
 				sessionId: "session-a",
 				rawPaths: [".gjc/specs/deep-interview-x.md"],
+				forceOverride: true,
 			}),
 		).resolves.toBeUndefined();
 	});

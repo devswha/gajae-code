@@ -85,7 +85,7 @@ describe("GJC native skill-state hooks", () => {
 		expect(modeState).toMatchObject({ active: true, current_phase: "interviewing", session_id: "session-1" });
 	});
 
-	it("rich deep-interview prompt activation blocks guarded product mutation and allows spec artifacts", async () => {
+	it("rich deep-interview prompt activation allows product mutation and blocks direct spec artifacts", async () => {
 		const root = await cwd();
 		await dispatchGjcNativeSkillHook(
 			{
@@ -102,21 +102,21 @@ describe("GJC native skill-state hooks", () => {
 		const state = await readVisibleSkillActiveState(root, "session-rich");
 		expect(state).toMatchObject({ active: true, skill: "deep-interview" });
 
-		const blocked = await getDeepInterviewMutationDecision({
+		const allowed = await getDeepInterviewMutationDecision({
 			cwd: root,
 			sessionId: "session-rich",
 			tool: { name: "write" } as never,
 			args: { path: "packages/coding-agent/src/product.ts", content: "unsafe" },
 		});
-		expect(blocked.blocked).toBe(true);
+		expect(allowed.blocked).toBe(false);
 
-		const allowed = await getDeepInterviewMutationDecision({
+		const blocked = await getDeepInterviewMutationDecision({
 			cwd: root,
 			sessionId: "session-rich",
 			tool: { name: "write" } as never,
 			args: { path: ".gjc/specs/deep-interview-sample.md", content: "spec" },
 		});
-		expect(allowed.blocked).toBe(false);
+		expect(blocked.blocked).toBe(true);
 	});
 
 	it("encodes hook session ids before writing skill and mode state paths", async () => {
