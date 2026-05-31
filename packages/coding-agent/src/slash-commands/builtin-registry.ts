@@ -793,8 +793,9 @@ const BUILTIN_SLASH_COMMAND_REGISTRY: ReadonlyArray<SlashCommandSpec> = [
 		},
 	},
 	{
-		name: "contribution-prep",
-		description: "Dump redacted session context and spawn a fresh contribution-prep worker",
+		name: "contribute-pr",
+		aliases: ["contribution-prep"],
+		description: "Dump redacted session context and spawn a fresh contribute-pr worker",
 		inlineHint: "[focus instructions]",
 		allowArgs: true,
 		handle: async (command, runtime) => {

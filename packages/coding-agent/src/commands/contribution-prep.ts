@@ -6,16 +6,16 @@ function writeText(lines: string[]): void {
 }
 
 export default class ContributionPrep extends Command {
-	static description = "Dump redacted context and prepare a fresh contribution-prep worker prompt";
+	static description = "Dump redacted context and prepare a fresh contribute-pr worker prompt";
 	static strict = false;
 
 	static flags = {
-		spawn: Flags.boolean({ description: "Spawn a fresh GJC worker after writing artifacts", default: false }),
+		"no-spawn": Flags.boolean({ description: "Only write artifacts; do not spawn a fresh GJC worker" }),
 		"source-session-id": Flags.string({ description: "Source session id to record in the manifest" }),
-		"artifact-root": Flags.string({ description: "Directory where contribution-prep artifacts are written" }),
+		"artifact-root": Flags.string({ description: "Directory where contribute-pr artifacts are written" }),
 	};
 
-	static examples = ["gjc contribution-prep", "gjc contribution-prep --spawn"];
+	static examples = ["gjc contribute-pr", "gjc contribute-pr --no-spawn"];
 
 	async run(): Promise<void> {
 		const { flags } = await this.parse(ContributionPrep);
@@ -27,7 +27,7 @@ export default class ContributionPrep extends Command {
 				messages: [],
 			},
 			{
-				spawnWorker: flags.spawn ?? false,
+				spawnWorker: !flags["no-spawn"],
 				artifactRoot: flags["artifact-root"],
 			},
 		);

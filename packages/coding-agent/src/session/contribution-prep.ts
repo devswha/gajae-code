@@ -5,6 +5,7 @@ import type { AgentMessage } from "@gajae-code/agent-core";
 import type { AssistantMessage, ToolResultMessage, UserMessage } from "@gajae-code/ai";
 import { $ } from "bun";
 import { shortenPath } from "../tools/render-utils";
+import { resolveGjcCommand } from "../task/gjc-command";
 
 export const CONTRIBUTION_PREP_SCHEMA_VERSION = 1;
 
@@ -43,7 +44,7 @@ export interface ContributionPrepOptions {
 	spawnWorker?: boolean;
 	artifactRoot?: string;
 	now?: Date;
-	spawn?: (args: string[], cwd: string) => Promise<void>;
+	spawn?: (args: string[], cwd: string, shell: boolean) => Promise<void>;
 }
 
 export interface ContributionPrepContext {
@@ -79,7 +80,14 @@ export function redactContributionPrepText(
 	let redacted = text;
 	redacted = replaceRegex(
 		redacted,
-		/\b(?:sk|pk|rk|ghp|gho|github_pat|xox[baprs])-[-_A-Za-z0-9]{12,}\b/g,
+		/\b(?:sk|pk|rk|xox[baprs])-[-_A-Za-z0-9]{12,}\b/g,
+		"[REDACTED_TOKEN]",
+		state,
+		"tokens",
+	);
+	redacted = replaceRegex(
+		redacted,
+		/\b(?:ghp_[A-Za-z0-9_]{12,}|gho_[A-Za-z0-9_]{12,}|github_pat_[A-Za-z0-9_]{12,})\b/g,
 		"[REDACTED_TOKEN]",
 		state,
 		"tokens",
@@ -285,10 +293,11 @@ export async function prepareContributionPrep(
 	if (options.spawnWorker) {
 		const spawn =
 			options.spawn ??
-			(async (args, cwd) => {
-				Bun.spawn(args, { cwd, stdout: "inherit", stderr: "inherit", stdin: "inherit" });
+			(async (args, cwd, shell) => {
+				Bun.spawn(args, { cwd, stdout: "inherit", stderr: "inherit", stdin: "inherit", shell });
 			});
-		await spawn([process.execPath, "--no-skills", "--", `@${workerPromptPath}`], context.cwd);
+		const command = resolveGjcCommand();
+		await spawn([command.cmd, ...command.args, "--no-skills", "--", `@${workerPromptPath}`], context.cwd, command.shell);
 		spawned = true;
 	}
 
