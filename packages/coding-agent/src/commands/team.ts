@@ -47,6 +47,13 @@ function formatNotificationSummary(snapshot: GjcTeamSnapshot): string {
 	return `notifications: total=${summary.total} replay_eligible=${summary.replay_eligible} pending=${summary.by_state.pending} queued=${summary.by_state.queued} deferred=${summary.by_state.deferred} failed=${summary.by_state.failed}`;
 }
 
+function formatAwaitingIntegrationNextStep(snapshot: GjcTeamSnapshot): string[] {
+	if (snapshot.phase !== "awaiting_integration") return [];
+	return [
+		"next: worker tasks are completed, but integration still needs leader attention before the team is complete",
+	];
+}
+
 function formatIntegrationSummary(snapshot: {
 	integration_by_worker?: Record<string, { status?: string; conflict_files?: string[] }>;
 }): string[] {
@@ -124,6 +131,7 @@ export default class Team extends Command {
 				`tasks: ${snapshot.task_total} (${formatTaskCounts(snapshot.task_counts)})`,
 				`workers: ${snapshot.workers.map(worker => `${worker.id}:${worker.status}`).join(" ")}`,
 				formatNotificationSummary(snapshot),
+				...formatAwaitingIntegrationNextStep(snapshot),
 				...formatIntegrationSummary(snapshot),
 			]);
 			return;
