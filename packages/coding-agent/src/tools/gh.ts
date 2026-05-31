@@ -425,6 +425,7 @@ interface PrCreateDuplicateCheck {
 	base: string;
 	head: string;
 	issue?: GhIssueViewData;
+	linkedPr?: GhPrListData;
 	pr?: GhPrListData;
 }
 
@@ -682,6 +683,7 @@ function resolveSearchLimit(value: number | undefined): number {
 async function resolvePrCreateBase(
 	cwd: string,
 	explicitBase: string | undefined,
+	repo: string | undefined,
 	signal?: AbortSignal,
 ): Promise<string | undefined> {
 	if (explicitBase) return explicitBase;
@@ -695,10 +697,10 @@ async function resolvePrCreateBase(
 		// local git metadata is unavailable.
 	}
 	try {
-		const repo = await resolveDefaultRepoMemoized(cwd, signal);
+		const resolvedRepo = repo ?? (await resolveDefaultRepoMemoized(cwd, signal));
 		const repoView = await git.github.json<GhRepoViewData>(
 			cwd,
-			["repo", "view", repo, "--json", "defaultBranchRef"],
+			["repo", "view", resolvedRepo, "--json", "defaultBranchRef"],
 			signal,
 			{ repoProvided: true },
 		);
@@ -716,18 +718,33 @@ function normalizePrHead(value: string): string {
 	return separator >= 0 ? value.slice(separator + 1) : value;
 }
 
-function extractClosingIssueReference(body: string | undefined, repo: string | undefined): number | undefined {
-	if (!body) return undefined;
+function extractClosingIssueReferences(body: string | undefined, repo: string | undefined): number[] {
+	if (!body) return [];
+	const issueNumbers: number[] = [];
 	ISSUE_CLOSING_REFERENCE_PATTERN.lastIndex = 0;
 	let match = ISSUE_CLOSING_REFERENCE_PATTERN.exec(body);
 	while (match !== null) {
 		const issueRepo = normalizeOptionalString(match[1]);
-		if (issueRepo && repo && issueRepo.toLowerCase() !== repo.toLowerCase()) continue;
-		const issueNumber = Number(match[2]);
-		if (Number.isInteger(issueNumber) && issueNumber > 0) return issueNumber;
+		if (!issueRepo || !repo || issueRepo.toLowerCase() === repo.toLowerCase()) {
+			const issueNumber = Number(match[2]);
+			if (Number.isInteger(issueNumber) && issueNumber > 0) issueNumbers.push(issueNumber);
+		}
 		match = ISSUE_CLOSING_REFERENCE_PATTERN.exec(body);
 	}
-	return undefined;
+	return issueNumbers;
+}
+
+async function resolvePrCreateHead(
+	cwd: string,
+	explicitHead: string | undefined,
+	signal?: AbortSignal,
+): Promise<string | undefined> {
+	if (explicitHead) return explicitHead;
+	try {
+		return (await git.branch.current(cwd, signal)) ?? undefined;
+	} catch {
+		return undefined;
+	}
 }
 
 async function fetchPrCreateDuplicateCheck(
@@ -761,10 +778,11 @@ async function fetchPrCreateDuplicateCheck(
 		{ repoProvided: true },
 	);
 	const existingPr = prs.find(pr => pr.headRefName === normalizedHead && pr.baseRefName === base) ?? prs[0];
-	const issueNumber = existingPr ? undefined : extractClosingIssueReference(body, resolvedRepo);
+	const issueNumbers = existingPr ? [] : extractClosingIssueReferences(body, resolvedRepo);
 	let issue: GhIssueViewData | undefined;
-	if (issueNumber !== undefined) {
-		issue = await git.github.json<GhIssueViewData>(
+	let linkedPr: GhPrListData | undefined;
+	for (const issueNumber of issueNumbers) {
+		const candidateIssue = await git.github.json<GhIssueViewData>(
 			cwd,
 			[
 				"issue",
@@ -778,8 +796,29 @@ async function fetchPrCreateDuplicateCheck(
 			signal,
 			{ repoProvided: true },
 		);
+		issue = candidateIssue;
+		if (candidateIssue.state && candidateIssue.state.toUpperCase() !== "OPEN") break;
+		const linkedPrs = await git.github.json<GhPrListData[]>(
+			cwd,
+			[
+				"pr",
+				"list",
+				"--repo",
+				resolvedRepo,
+				"--search",
+				`${issueNumber} linked:issue`,
+				"--state",
+				"open",
+				"--json",
+				"number,title,state,url,baseRefName,headRefName,isDraft",
+			],
+			signal,
+			{ repoProvided: true },
+		);
+		linkedPr = linkedPrs.find(pr => pr.headRefName !== normalizedHead) ?? linkedPrs[0];
+		if (linkedPr) break;
 	}
-	return { base, head: normalizedHead, issue, pr: existingPr };
+	return { base, head: normalizedHead, issue, linkedPr, pr: existingPr };
 }
 
 function formatPrCreateExistingResult(check: PrCreateDuplicateCheck): string | undefined {
@@ -793,6 +832,18 @@ function formatPrCreateExistingResult(check: PrCreateDuplicateCheck): string | u
 		if (check.pr) pushLine(lines, "Existing PR", check.pr.url);
 		pushLine(lines, "Base", check.base);
 		pushLine(lines, "Head", check.head);
+		return lines.join("\n").trim();
+	}
+	if (check.linkedPr) {
+		const number = check.linkedPr.number !== undefined ? ` #${check.linkedPr.number}` : "";
+		const title = check.linkedPr.title ? `: ${check.linkedPr.title}` : "";
+		const lines = [`# Pull Request Already Linked${number}${title}`, ""];
+		pushLine(lines, "URL", check.linkedPr.url);
+		pushLine(lines, "Issue", check.issue?.url);
+		pushLine(lines, "State", check.linkedPr.state);
+		pushLine(lines, "Draft", check.linkedPr.isDraft);
+		pushLine(lines, "Base", check.linkedPr.baseRefName ?? check.base);
+		pushLine(lines, "Head", check.linkedPr.headRefName ?? check.head);
 		return lines.join("\n").trim();
 	}
 	if (check.pr) {
@@ -3267,7 +3318,7 @@ async function executePrCreate(
 	const title = normalizeOptionalString(params.title);
 	const body = params.body;
 	const requestedBase = normalizeOptionalString(params.base);
-	const head = normalizeOptionalString(params.head);
+	const requestedHead = normalizeOptionalString(params.head);
 	const draft = params.draft ?? false;
 	const fill = params.fill ?? false;
 	const reviewers = normalizePrIdentifierList(params.reviewer);
@@ -3280,11 +3331,15 @@ async function executePrCreate(
 	if (fill && (title || body !== undefined)) {
 		throw new ToolError("fill is mutually exclusive with title and body");
 	}
-	const base = await resolvePrCreateBase(session.cwd, requestedBase, signal);
+	const base = await resolvePrCreateBase(session.cwd, requestedBase, repo, signal);
+	const head = await resolvePrCreateHead(session.cwd, requestedHead, signal);
 	const duplicateCheck = await fetchPrCreateDuplicateCheck(session.cwd, repo, base, head, body, signal);
 	const existingText = duplicateCheck ? formatPrCreateExistingResult(duplicateCheck) : undefined;
 	if (existingText) {
-		return buildTextResult(existingText, duplicateCheck?.pr?.url ?? duplicateCheck?.issue?.url);
+		return buildTextResult(
+			existingText,
+			duplicateCheck?.pr?.url ?? duplicateCheck?.linkedPr?.url ?? duplicateCheck?.issue?.url,
+		);
 	}
 
 	const args = ["pr", "create"];
