@@ -268,12 +268,13 @@ describe("GJC skill-active state", () => {
 		});
 	});
 
-	it("supersedes an upstream pipeline skill when a later stage is activated without a handoff verb", async () => {
+	it("keeps every active pipeline skill at the read layer (HUD pipeline collapse is render-only)", async () => {
 		await withTempCwd(async cwd => {
-			// `gjc ralplan` then `gjc ultragoal` each activate their own row; the
-			// ultragoal activation does not demote ralplan, so without the pipeline
-			// collapse the HUD would render ralplan + ultragoal. Only the current
-			// (most-recently-activated) stage should remain.
+			// `gjc ralplan` then `gjc ultragoal` each activate their own row without
+			// demoting the other. The shared read keeps both so blocking consumers
+			// (deep-interview mutation guard, handoff caller inference) still see the
+			// true active set; collapsing to the current stage is the HUD renderer's
+			// job, covered in skill-hud-bar.test.ts.
 			await syncSkillActiveState({
 				cwd,
 				skill: "ralplan",
@@ -292,29 +293,88 @@ describe("GJC skill-active state", () => {
 			});
 
 			const visible = await readVisibleSkillActiveState(cwd);
-			expect(visible?.active_skills?.map(entry => entry.skill)).toEqual(["ultragoal"]);
+			expect(visible?.active_skills?.map(entry => entry.skill).sort()).toEqual(["ralplan", "ultragoal"]);
 		});
 	});
 
-	it("keeps team alongside ultragoal since team is not part of the planning pipeline", async () => {
+	it("keeps an active session-scoped row visible despite a newer session-less inactive same-skill row", async () => {
 		await withTempCwd(async cwd => {
-			await syncSkillActiveState({
-				cwd,
-				skill: "ultragoal",
-				phase: "executing",
-				active: true,
-				nowIso: "2026-01-01T00:00:00.000Z",
-			});
-			await syncSkillActiveState({
-				cwd,
-				skill: "team",
-				phase: "running",
-				active: true,
-				nowIso: "2026-01-01T00:05:00.000Z",
-			});
+			// A session-less (global) deep-interview row was handed off (inactive,
+			// newest), but the current session still has its own active interview.
+			// Session ownership must win so the mutation guard still sees it.
+			const { rootPath } = getSkillActiveStatePaths(cwd, "sess1");
+			await fs.mkdir(path.dirname(rootPath), { recursive: true });
+			await fs.writeFile(
+				rootPath,
+				JSON.stringify({
+					version: 1,
+					active: true,
+					skill: "deep-interview",
+					active_skills: [
+						{
+							skill: "deep-interview",
+							phase: "interviewing",
+							active: true,
+							session_id: "sess1",
+							updated_at: "2026-01-01T00:00:00.000Z",
+						},
+						{
+							skill: "deep-interview",
+							phase: "handoff",
+							active: false,
+							updated_at: "2026-01-01T00:09:00.000Z",
+							handoff_to: "ralplan",
+						},
+					],
+				}),
+			);
+
+			const visible = await readVisibleSkillActiveState(cwd, "sess1");
+			expect(visible?.active_skills?.map(entry => entry.skill)).toEqual(["deep-interview"]);
+		});
+	});
+
+	it("does not let an inactive same-skill row without a valid timestamp hide an active row", async () => {
+		await withTempCwd(async cwd => {
+			// Root read (no session scope) with two same-skill rows that carry no
+			// trustworthy timestamp. The active row must win the tie instead of an
+			// inactive row suppressing it by merge order.
+			const { rootPath } = getSkillActiveStatePaths(cwd);
+			await fs.mkdir(path.dirname(rootPath), { recursive: true });
+			await fs.writeFile(
+				rootPath,
+				JSON.stringify({
+					version: 1,
+					active: true,
+					skill: "deep-interview",
+					active_skills: [
+						{ skill: "deep-interview", phase: "interviewing", active: true, session_id: "a" },
+						{ skill: "deep-interview", phase: "handoff", active: false, session_id: "b" },
+					],
+				}),
+			);
 
 			const visible = await readVisibleSkillActiveState(cwd);
-			expect(visible?.active_skills?.map(entry => entry.skill).sort()).toEqual(["team", "ultragoal"]);
+			expect(visible?.active_skills?.map(entry => entry.skill)).toEqual(["deep-interview"]);
+			expect(visible?.active_skills?.[0]?.phase).toBe("interviewing");
+		});
+	});
+
+	it("surfaces legacy top-level active state through the visible read", async () => {
+		await withTempCwd(async cwd => {
+			// Pre-`active_skills` state files stored a single workflow at the top
+			// level with no `active_skills` array. The raw visible read must still
+			// surface it for the HUD, mutation guard, and caller inference.
+			const { rootPath } = getSkillActiveStatePaths(cwd);
+			await fs.mkdir(path.dirname(rootPath), { recursive: true });
+			await fs.writeFile(
+				rootPath,
+				JSON.stringify({ version: 1, active: true, skill: "deep-interview", phase: "intent-first" }),
+			);
+
+			const visible = await readVisibleSkillActiveState(cwd);
+			expect(visible?.active_skills?.map(entry => entry.skill)).toEqual(["deep-interview"]);
+			expect(visible?.active_skills?.[0]?.phase).toBe("intent-first");
 		});
 	});
 

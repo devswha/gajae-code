@@ -1,4 +1,8 @@
-import type { SkillActiveEntry, WorkflowHudChip } from "../../../skill-state/active-state";
+import {
+	collapsePlanningPipeline,
+	type SkillActiveEntry,
+	type WorkflowHudChip,
+} from "../../../skill-state/active-state";
 import { workflowReceiptStatus } from "../../../skill-state/workflow-state-contract";
 
 const ANSI_RESET_FG = "\x1b[39m";
@@ -69,7 +73,8 @@ function formatEntry(entry: SkillActiveEntry): string {
 }
 
 export function renderSkillHudBar(entries: readonly SkillActiveEntry[], width: number): string | null {
-	const active = entries.filter(entry => entry.active !== false && sanitizeHudPart(entry.skill)).sort(compareEntries);
+	const visible = collapsePlanningPipeline(entries.filter(entry => entry.active !== false));
+	const active = visible.filter(entry => sanitizeHudPart(entry.skill)).sort(compareEntries);
 	if (active.length === 0 || width <= 0) return null;
 	const body = active.map(formatEntry).join(" + ");
 	const prefix = `${ANSI_BORDER}◆${ANSI_RESET_FG} ${ANSI_BOLD}${ANSI_ACCENT}hud${ANSI_RESET_FG}${ANSI_RESET_BOLD} `;

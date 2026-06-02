@@ -142,6 +142,37 @@ describe("skill HUD bar renderer", () => {
 		expect(rendered).not.toContain("ultragoal");
 	});
 
+	it("collapses the planning pipeline to the most-recently-activated stage", () => {
+		// `gjc ralplan` then `gjc ultragoal` activate their own rows without
+		// running the handoff verb, so both arrive at the HUD active. Only the
+		// current (newest) stage should render.
+		const rendered = Bun.stripANSI(
+			renderSkillHudBar(
+				[
+					{ skill: "ralplan", phase: "final", active: true, updated_at: "2026-01-01T00:00:00.000Z" },
+					{ skill: "ultragoal", phase: "executing", active: true, updated_at: "2026-01-01T00:05:00.000Z" },
+				],
+				80,
+			) ?? "",
+		);
+		expect(rendered).toContain("ultragoal:executing");
+		expect(rendered).not.toContain("ralplan");
+	});
+
+	it("keeps team alongside ultragoal since team is not part of the planning pipeline", () => {
+		const rendered = Bun.stripANSI(
+			renderSkillHudBar(
+				[
+					{ skill: "ultragoal", phase: "executing", active: true, updated_at: "2026-01-01T00:00:00.000Z" },
+					{ skill: "team", phase: "running", active: true, updated_at: "2026-01-01T00:05:00.000Z" },
+				],
+				80,
+			) ?? "",
+		);
+		expect(rendered).toContain("ultragoal:executing");
+		expect(rendered).toContain("team:running");
+	});
+
 	it("does not emit warn:stale for an entry without explicit stale flag (no 24h derivation)", () => {
 		// Pre-G003 the renderer relied on withDerivedStale to flag aged entries.
 		// Post-G003, only explicit `entry.stale === true` produces the chip.

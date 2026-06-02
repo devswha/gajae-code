@@ -327,11 +327,33 @@ async function readRawActiveStateForHandoff(filePath: string, strict: boolean): 
 }
 
 function rawActiveEntries(state: SkillActiveState | null): SkillActiveEntry[] {
-	if (!state || !Array.isArray(state.active_skills)) return [];
+	if (!state) return [];
 	const out: SkillActiveEntry[] = [];
-	for (const candidate of state.active_skills) {
-		const normalized = normalizeEntry(candidate);
-		if (normalized) out.push(normalized);
+	if (Array.isArray(state.active_skills)) {
+		for (const candidate of state.active_skills) {
+			const normalized = normalizeEntry(candidate);
+			if (normalized) out.push(normalized);
+		}
+	}
+	// Legacy top-level fallback: pre-`active_skills` state files persisted a single
+	// active workflow as top-level `{ active: true, skill, phase, … }` with no
+	// `active_skills` array. `normalizeSkillActiveState` still synthesizes that row,
+	// so the raw read used by the HUD, mutation guard, and caller inference must do
+	// the same or it would treat a legacy active workflow as absent.
+	if (out.length === 0 && state.active === true) {
+		const skill = safeString(state.skill).trim();
+		if (skill) {
+			out.push({
+				skill,
+				phase: safeString(state.phase).trim() || undefined,
+				active: true,
+				activated_at: safeString(state.activated_at).trim() || undefined,
+				updated_at: safeString(state.updated_at).trim() || undefined,
+				session_id: safeString(state.session_id).trim() || undefined,
+				thread_id: safeString(state.thread_id).trim() || undefined,
+				turn_id: safeString(state.turn_id).trim() || undefined,
+			});
+		}
 	}
 	return out;
 }
@@ -348,7 +370,55 @@ function filterRootEntriesForSession(entries: SkillActiveEntry[], sessionId?: st
 function entryRecency(entry: SkillActiveEntry): number {
 	const stamp = entry.handoff_at || entry.updated_at || entry.activated_at;
 	const ms = stamp ? Date.parse(stamp) : Number.NaN;
-	return Number.isFinite(ms) ? ms : 0;
+	// NaN signals "no trustworthy timestamp" so comparisons can refuse to let an
+	// unknown-recency row win a tie; callers must treat NaN explicitly.
+	return ms;
+}
+
+/**
+ * Session ownership rank for a row visible to a `sessionId` read. When a concrete
+ * session is in scope, a row owned by that exact session outranks a session-less
+ * fallback row, which outranks a foreign-session row. Session-less rows are global
+ * fallbacks and must never override a session's own state. With no scope session,
+ * every row ranks equally.
+ */
+function sessionScopeRank(entry: SkillActiveEntry, sessionId?: string): number {
+	const scope = safeString(sessionId).trim();
+	if (!scope) return 0;
+	const entrySession = safeString(entry.session_id).trim();
+	if (entrySession === scope) return 2;
+	if (entrySession.length === 0) return 1;
+	return 0;
+}
+
+/**
+ * Pick the surviving row for a single skill within a session-scoped visible set.
+ * Precedence, highest first:
+ *   1. exact-session ownership over a session-less fallback row,
+ *   2. a strictly-newer valid timestamp,
+ *   3. a valid timestamp over a missing/unparseable one,
+ *   4. active over inactive — so an untrustworthy inactive row can never hide an
+ *      active row — then merge order for a total tie.
+ * A genuine handoff demotion still supersedes a stale active row of the same skill
+ * because, within one session scope, it carries the newest valid timestamp.
+ */
+function moreVisibleEntry(
+	incumbent: SkillActiveEntry,
+	challenger: SkillActiveEntry,
+	sessionId?: string,
+): SkillActiveEntry {
+	const scopeDelta = sessionScopeRank(incumbent, sessionId) - sessionScopeRank(challenger, sessionId);
+	if (scopeDelta !== 0) return scopeDelta > 0 ? incumbent : challenger;
+	const ri = entryRecency(incumbent);
+	const rc = entryRecency(challenger);
+	const vi = Number.isFinite(ri);
+	const vc = Number.isFinite(rc);
+	if (vi && vc && ri !== rc) return ri > rc ? incumbent : challenger;
+	if (vi !== vc) return vi ? incumbent : challenger;
+	const incumbentActive = incumbent.active !== false;
+	const challengerActive = challenger.active !== false;
+	if (incumbentActive !== challengerActive) return incumbentActive ? incumbent : challenger;
+	return incumbent;
 }
 
 /**
@@ -358,17 +428,16 @@ function entryRecency(entry: SkillActiveEntry): number {
  * `filterRootEntriesForSession`) plus a later, session-scoped handoff demotion
  * of the same skill. Without this collapse the HUD renders the same workflow
  * twice and keeps showing a skill that has already handed control to its
- * successor. The most recently updated row wins, so a handoff demotion
- * (`active:false`, newest timestamp) supersedes an older stale `active:true`
- * row of the same skill and is then dropped by the active filter below.
+ * successor. `moreVisibleEntry` picks the winner so a handoff demotion supersedes
+ * an older stale `active:true` row (and is then dropped by the active filter
+ * below) while a session's own active row is never hidden by a session-less or
+ * untrustworthy-timestamp row.
  */
-function dedupeVisibleBySkill(entries: SkillActiveEntry[]): SkillActiveEntry[] {
+function dedupeVisibleBySkill(entries: SkillActiveEntry[], sessionId?: string): SkillActiveEntry[] {
 	const winners = new Map<string, SkillActiveEntry>();
 	for (const entry of entries) {
 		const current = winners.get(entry.skill);
-		if (!current || entryRecency(entry) >= entryRecency(current)) {
-			winners.set(entry.skill, entry);
-		}
+		winners.set(entry.skill, current ? moreVisibleEntry(current, entry, sessionId) : entry);
 	}
 	return [...winners.values()];
 }
@@ -384,15 +453,29 @@ function dedupeVisibleBySkill(entries: SkillActiveEntry[]): SkillActiveEntry[] {
  * stage so the HUD reflects the single current workflow. `team` is intentionally
  * excluded — it runs alongside ultragoal — and every non-pipeline skill is left
  * untouched.
+ *
+ * This is a HUD-display policy only. It is applied by the skill HUD renderer and
+ * deliberately NOT folded into `readVisibleSkillActiveState`, whose callers (the
+ * deep-interview mutation guard and handoff caller inference) must keep seeing
+ * every genuinely-active skill rather than the single most-recent pipeline stage.
  */
 const PLANNING_PIPELINE_SKILLS = new Set<string>(["deep-interview", "ralplan", "ultragoal"]);
 
-function collapsePlanningPipeline(entries: SkillActiveEntry[]): SkillActiveEntry[] {
+export function collapsePlanningPipeline(entries: readonly SkillActiveEntry[]): SkillActiveEntry[] {
 	const pipeline = entries.filter(entry => PLANNING_PIPELINE_SKILLS.has(entry.skill));
-	if (pipeline.length <= 1) return entries;
+	if (pipeline.length <= 1) return [...entries];
 	let current = pipeline[0];
+	let currentRecency = entryRecency(current);
 	for (const entry of pipeline) {
-		if (entryRecency(entry) >= entryRecency(current)) current = entry;
+		const recency = entryRecency(entry);
+		// Prefer a strictly-newer valid timestamp; a valid timestamp also beats a
+		// missing/unparseable one. Ties (or all-invalid) keep the first stage
+		// deterministically rather than letting an unknown-recency row win.
+		const better = Number.isFinite(recency) && (!Number.isFinite(currentRecency) || recency > currentRecency);
+		if (better) {
+			current = entry;
+			currentRecency = recency;
+		}
 	}
 	return entries.filter(entry => !PLANNING_PIPELINE_SKILLS.has(entry.skill) || entry === current);
 }
@@ -409,8 +492,7 @@ function mergeVisibleEntries(
 	for (const entry of rawActiveEntries(sessionState)) {
 		merged.set(entryKey(entry), entry);
 	}
-	const active = dedupeVisibleBySkill([...merged.values()]).filter(entry => entry.active !== false);
-	return collapsePlanningPipeline(active);
+	return dedupeVisibleBySkill([...merged.values()], sessionId).filter(entry => entry.active !== false);
 }
 
 export async function readVisibleSkillActiveState(cwd: string, sessionId?: string): Promise<SkillActiveState | null> {
