@@ -173,6 +173,34 @@ describe("skill HUD bar renderer", () => {
 		expect(rendered).toContain("team:running");
 	});
 
+	it("collapses the pipeline NaN-safely: a valid timestamp wins over a missing one regardless of order", () => {
+		const entries = [
+			{ skill: "ralplan", phase: "final", active: true },
+			{ skill: "ultragoal", phase: "executing", active: true, updated_at: "2026-01-01T00:05:00.000Z" },
+		];
+		const forward = Bun.stripANSI(renderSkillHudBar(entries, 80) ?? "");
+		const reversed = Bun.stripANSI(renderSkillHudBar([...entries].reverse(), 80) ?? "");
+		expect(forward).toContain("ultragoal:executing");
+		expect(forward).not.toContain("ralplan");
+		expect(reversed).toContain("ultragoal:executing");
+		expect(reversed).not.toContain("ralplan");
+	});
+
+	it("renders a single deterministic pipeline stage when no entry has a timestamp", () => {
+		const rendered = Bun.stripANSI(
+			renderSkillHudBar(
+				[
+					{ skill: "ralplan", phase: "final", active: true },
+					{ skill: "ultragoal", phase: "executing", active: true },
+				],
+				80,
+			) ?? "",
+		);
+		// Exactly one planning-pipeline chip survives the collapse.
+		const chips = (rendered.split("hud")[1] ?? "").split("+").filter(part => /ralplan|ultragoal/.test(part));
+		expect(chips).toHaveLength(1);
+	});
+
 	it("does not emit warn:stale for an entry without explicit stale flag (no 24h derivation)", () => {
 		// Pre-G003 the renderer relied on withDerivedStale to flag aged entries.
 		// Post-G003, only explicit `entry.stale === true` produces the chip.
