@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-03
+
 ### Added
 
 - Added xAI to the `/login` provider catalog as a Grok OAuth login with PKCE, refresh-token storage, and mocked login/refresh coverage.

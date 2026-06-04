@@ -235,10 +235,8 @@ describe("AgentSession auto-retry busy recovery", () => {
 
 		// First turn errors retryably -> auto-retry schedules a continuation.
 		const mock = createMockModel({
-			responses: [
-				{ throw: "503 service unavailable: overloaded_error retry-after-ms=5" },
-				{ content: ["second prompt still works after yield retry recovery"] },
-			],
+			responses: [{ throw: "503 service unavailable: overloaded_error retry-after-ms=5" }],
+			handler: { content: ["second prompt ok"] },
 		});
 		const agent = new Agent({
 			getApiKey: provider => `${provider}-test-key`,
@@ -274,6 +272,7 @@ describe("AgentSession auto-retry busy recovery", () => {
 		(agent as unknown as { continue: () => Promise<void> }).continue = async () => {
 			if (!recovered) {
 				recovered = true;
+				(agent as unknown as { state: { isStreaming: boolean } }).state.isStreaming = false;
 				agent.emitExternalEvent({ type: "message_end", message: yieldAssistant });
 				agent.emitExternalEvent({
 					type: "tool_execution_end",
