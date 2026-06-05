@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Included the diagnosed `--session-id` in `gjc state doctor` stale active-state fix commands so session-scoped HUD snapshots can be cleared without accidentally targeting the current session.
+
 ## [0.3.2] - 2026-06-05
 
 ### Added
