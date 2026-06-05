@@ -29,6 +29,17 @@ async function writeJson(filePath: string, value: unknown): Promise<void> {
 	await fs.writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf-8");
 }
 
+async function fileExists(filePath: string): Promise<boolean> {
+	try {
+		await fs.stat(filePath);
+		return true;
+	} catch (error) {
+		const err = error as NodeJS.ErrnoException;
+		if (err.code === "ENOENT") return false;
+		throw error;
+	}
+}
+
 async function snapshotFiles(root: string): Promise<Map<string, { bytes: Buffer; mtimeMs: number }>> {
 	const out = new Map<string, { bytes: Buffer; mtimeMs: number }>();
 	async function visit(dir: string): Promise<void> {
@@ -207,5 +218,108 @@ describe("gjc state doctor", () => {
 				fixCommand: "gjc state team clear",
 			}),
 		]);
+	});
+
+	it("prints a session-scoped clear command for stale active snapshots in old sessions", async () => {
+		const root = await tempDir();
+		const sessionId = "old-session";
+		const sessionRoot = path.join(root, ".gjc", "state", "sessions", sessionId);
+		const snapshotPath = path.join(sessionRoot, "skill-active-state.json");
+		await writeJson(snapshotPath, {
+			version: 1,
+			active: true,
+			skill: "ralplan",
+			phase: "final",
+			session_id: sessionId,
+			active_skills: [{ skill: "ralplan", active: true, phase: "final", session_id: sessionId }],
+		});
+
+		const result = await runDoctorUnchanged(root, ["doctor", "--skill", "ralplan", "--json"]);
+		expect(result.status).toBe(1);
+		const parsed = JSON.parse(result.stdout ?? "{}");
+		expect(parsed.problems).toEqual([
+			expect.objectContaining({
+				type: "stale_active_state",
+				skill: "ralplan",
+				path: snapshotPath,
+				fixCommand: "gjc state ralplan clear --session-id old-session",
+			}),
+		]);
+	});
+
+	it("executes a session-scoped stale active fix without clearing current-session HUD state", async () => {
+		const root = await tempDir();
+		const stateRoot = path.join(root, ".gjc", "state");
+		const sessionId = "old-session";
+		const sessionRoot = path.join(stateRoot, "sessions", sessionId);
+		const oldSnapshotPath = path.join(sessionRoot, "skill-active-state.json");
+		const currentSnapshotPath = path.join(stateRoot, "skill-active-state.json");
+		const currentEntryPath = path.join(stateRoot, "active", "ralplan.json");
+		await writeJson(oldSnapshotPath, {
+			version: 1,
+			active: true,
+			skill: "ralplan",
+			phase: "final",
+			session_id: sessionId,
+			active_skills: [{ skill: "ralplan", active: true, phase: "final", session_id: sessionId }],
+		});
+		const currentModePath = await writeStampedState(root, "ralplan", {
+			active: true,
+			current_phase: "planner",
+		});
+		await writeJson(currentEntryPath, { skill: "ralplan", active: true, phase: "planner" });
+
+		const result = await runDoctorUnchanged(root, ["doctor", "--skill", "ralplan", "--json"]);
+		const parsed = JSON.parse(result.stdout ?? "{}");
+		expect(parsed.problems).toEqual([
+			expect.objectContaining({
+				type: "stale_active_state",
+				skill: "ralplan",
+				path: oldSnapshotPath,
+				fixCommand: "gjc state ralplan clear --session-id old-session",
+			}),
+		]);
+
+		const fix = await runNativeStateCommand(["ralplan", "clear", "--session-id", sessionId], root);
+		expect(fix.status).toBe(0);
+		const fixedOldSnapshot = JSON.parse(await fs.readFile(oldSnapshotPath, "utf-8")) as { active?: boolean };
+		expect(fixedOldSnapshot.active).toBe(false);
+		expect(await fileExists(currentSnapshotPath)).toBe(true);
+		expect(await fileExists(currentEntryPath)).toBe(true);
+		expect(await fileExists(currentModePath)).toBe(true);
+		const afterFix = await runDoctorUnchanged(root, ["doctor", "--skill", "ralplan", "--json"]);
+		expect(afterFix.status).toBe(0);
+		expect(JSON.parse(afterFix.stdout ?? "{}").problems).toEqual([]);
+	});
+
+	it("does not emit invalid clear commands for hostile encoded session directories", async () => {
+		const root = await tempDir();
+		const stateRoot = path.join(root, ".gjc", "state");
+		const hostileSnapshotPath = path.join(stateRoot, "sessions", "weird%3Bid", "skill-active-state.json");
+		const malformedSnapshotPath = path.join(stateRoot, "sessions", "bad%ZZ", "skill-active-state.json");
+		await writeJson(hostileSnapshotPath, {
+			version: 1,
+			active: true,
+			skill: "ralplan",
+			active_skills: [{ skill: "ralplan", active: true }],
+		});
+		await writeJson(malformedSnapshotPath, {
+			version: 1,
+			active: true,
+			skill: "team",
+			active_skills: [{ skill: "team", active: true }],
+		});
+
+		const result = await runDoctorUnchanged(root, ["doctor", "--json"]);
+		expect(result.status).toBe(1);
+		const parsed = JSON.parse(result.stdout ?? "{}") as {
+			problems: Array<{ path: string; fixCommand: string }>;
+		};
+		expect(parsed.problems).toEqual([
+			expect.objectContaining({ path: hostileSnapshotPath, fixCommand: "gjc state prune --hard" }),
+			expect.objectContaining({ path: malformedSnapshotPath, fixCommand: "gjc state prune --hard" }),
+		]);
+		expect(parsed.problems.some(problem => problem.fixCommand.includes("--session-id"))).toBe(false);
+		expect(JSON.stringify(parsed.problems)).not.toContain("weird;id");
 	});
 });

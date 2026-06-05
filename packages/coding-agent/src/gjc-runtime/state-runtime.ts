@@ -436,16 +436,29 @@ function doctorProblem(
 		: { type, path: pathValue, message, fixCommand };
 }
 
-function activeEntryDir(cwd: string, sessionId: string | undefined): string {
-	return path.join(stateDirFor(cwd, sessionId), "active");
-}
-
 function skillFromActiveValue(value: unknown): string | undefined {
 	return isPlainObject(value) && typeof value.skill === "string" ? value.skill : undefined;
 }
 
 function activeFlag(value: unknown): boolean {
 	return isPlainObject(value) && value.active !== false;
+}
+function shellWord(value: string): string {
+	return /^[A-Za-z0-9._-]+$/.test(value) ? value : `'${value.replaceAll("'", "'\\''")}'`;
+}
+
+function stateClearFixCommand(skill: CanonicalGjcWorkflowSkill, sessionId: string | undefined): string {
+	return sessionId ? `gjc state ${skill} clear --session-id ${shellWord(sessionId)}` : `gjc state ${skill} clear`;
+}
+
+function decodeDoctorSessionDirName(rawSession: string): string | undefined {
+	try {
+		const decoded = decodeURIComponent(rawSession);
+		if (!PATH_COMPONENT_RE.test(decoded) || decoded.includes("..")) return undefined;
+		return encodeSessionSegment(decoded) === rawSession ? decoded : undefined;
+	} catch {
+		return undefined;
+	}
 }
 
 async function collectDoctorSummary(
@@ -523,11 +536,17 @@ async function collectDoctorSummary(
 		}
 	}
 
-	const inspectActiveScope = async (scopeSessionId: string | undefined): Promise<void> => {
-		const snapshotPath = activeStateFile(cwd, scopeSessionId);
+	const inspectActiveScope = async (
+		scopeRoot: string,
+		scopeSessionId: string | undefined,
+		unsafeSessionDir: boolean,
+	): Promise<void> => {
+		const staleFixCommand = (canonical: CanonicalGjcWorkflowSkill): string =>
+			unsafeSessionDir ? "gjc state prune --hard" : stateClearFixCommand(canonical, scopeSessionId);
+		const snapshotPath = path.join(scopeRoot, SKILL_ACTIVE_STATE_FILE);
 		const snapshot = await readRawJson(snapshotPath);
 		if (snapshot.exists) filesScanned += 1;
-		const entryFiles = await listJsonFiles(activeEntryDir(cwd, scopeSessionId));
+		const entryFiles = await listJsonFiles(path.join(scopeRoot, "active"));
 		const entrySkills = new Set<string>();
 		for (const entryPath of entryFiles) {
 			filesScanned += 1;
@@ -536,9 +555,7 @@ async function collectDoctorSummary(
 			entrySkills.add(entrySkill);
 			const canonical = canonicalWorkflowSkill(entrySkill);
 			if (canonical && !skills.includes(canonical)) continue;
-			const statePath = canonical
-				? modeStateFile(cwd, canonical, scopeSessionId)
-				: path.join(root, `${entrySkill}-state.json`);
+			const statePath = path.join(scopeRoot, `${canonical ?? entrySkill}-state.json`);
 			const state = await readRawJson(statePath);
 			if (activeFlag(entry.value) && (!state.exists || !activeFlag(state.value))) {
 				problems.push(
@@ -546,7 +563,7 @@ async function collectDoctorSummary(
 						"stale_active_state",
 						entryPath,
 						`active entry for ${entrySkill} does not match a live active mode-state`,
-						canonical ? `gjc state ${canonical} clear` : "gjc state prune --hard",
+						canonical ? staleFixCommand(canonical) : "gjc state prune --hard",
 						canonical ?? undefined,
 					),
 				);
@@ -565,7 +582,7 @@ async function collectDoctorSummary(
 							"stale_active_state",
 							snapshotPath,
 							`active snapshot lists ${entrySkill} but no raw per-skill active entry exists`,
-							canonical ? `gjc state ${canonical} clear` : "gjc state prune --hard",
+							canonical ? staleFixCommand(canonical) : "gjc state prune --hard",
 							canonical ?? undefined,
 						),
 					);
@@ -574,7 +591,7 @@ async function collectDoctorSummary(
 		}
 	};
 
-	await inspectActiveScope(sessionId);
+	await inspectActiveScope(stateDirFor(cwd, sessionId), sessionId, false);
 	if (!sessionId) {
 		const sessionsDir = path.join(root, "sessions");
 		let sessions: string[] = [];
@@ -588,7 +605,10 @@ async function collectDoctorSummary(
 			const err = error as NodeJS.ErrnoException;
 			if (err.code !== "ENOENT") throw error;
 		}
-		for (const rawSession of sessions) await inspectActiveScope(decodeURIComponent(rawSession));
+		for (const rawSession of sessions) {
+			const decodedSession = decodeDoctorSessionDirName(rawSession);
+			await inspectActiveScope(path.join(sessionsDir, rawSession), decodedSession, decodedSession === undefined);
+		}
 	}
 
 	problems.sort(

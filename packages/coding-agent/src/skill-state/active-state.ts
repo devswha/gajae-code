@@ -579,6 +579,17 @@ function activeStateWriterAudit(verb: string) {
 	return { category: "state" as const, verb, owner: "gjc-runtime" as const };
 }
 
+async function readRootActiveEntry(cwd: string, skill: string): Promise<SkillActiveEntry | null> {
+	try {
+		const text = await Bun.file(path.join(cwd, ".gjc", "state", "active", `${encodePathSegment(skill)}.json`)).text();
+		return normalizeEntry(JSON.parse(text));
+	} catch (error) {
+		const err = error as NodeJS.ErrnoException;
+		if (err.code === "ENOENT") return null;
+		return null;
+	}
+}
+
 async function persistActiveEntry(
 	cwd: string,
 	sessionScope: ActiveSessionScope | undefined,
@@ -653,10 +664,20 @@ export async function syncSkillActiveState(options: SyncSkillActiveStateOptions)
 				? { active_subskills: preservedActiveSubskills }
 				: {}),
 	};
-	await persistActiveEntry(options.cwd, undefined, entry);
-	await rebuildActiveState(options.cwd);
+	if (!options.sessionId) {
+		await persistActiveEntry(options.cwd, undefined, entry);
+		await rebuildActiveState(options.cwd);
+		return;
+	}
 
-	if (!options.sessionId) return;
+	const rootEntry = await readRootActiveEntry(options.cwd, options.skill);
+	const rootEntrySessionId = safeString(rootEntry?.session_id).trim();
+	const shouldUpdateRoot = entry.active !== false || rootEntrySessionId === options.sessionId;
+	if (shouldUpdateRoot) {
+		await persistActiveEntry(options.cwd, undefined, entry);
+		await rebuildActiveState(options.cwd);
+	}
+
 	const sessionScope = { sessionId: options.sessionId };
 	await persistActiveEntry(options.cwd, sessionScope, entry);
 	await rebuildActiveState(options.cwd, sessionScope);
