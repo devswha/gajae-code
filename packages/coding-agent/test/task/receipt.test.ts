@@ -224,6 +224,7 @@ describe("task result receipts", () => {
 					id: receipt.id,
 					synopsis: receipt.preview,
 					meta: { lineCount: receipt.outputRef?.lineCount, charSize: "64 B" },
+					outputUri: receipt.outputRef?.uri,
 				},
 			],
 		});
