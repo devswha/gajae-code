@@ -6,6 +6,10 @@
 
 - Preserved harness owner-vanish evidence after prompt acceptance: no-owner `recover` now either restores a detached owner when a prior endpoint exists or returns a public-safe concrete owner-exit reason plus a vanish receipt, and no-owner `observe`/`events` expose the preserved owner-exit summary.
 
+### Fixed
+
+- Suspended and restored the parent TUI around `/contribute-pr` worker launches and awaited the child exit so the fresh worker no longer races the original input box or leaves terminal state corrupted.
+
 ## [0.3.2] - 2026-06-05
 
 ### Added
