@@ -7,7 +7,11 @@ import {
 	RPC_COMMAND_TYPES,
 } from "../../src/modes/shared/agent-wire/command-contract";
 
-const SRC_ROOT = join(process.cwd(), "src");
+// Resolve source paths from this test's own location, not process.cwd(): the
+// full workspace test run can leave cwd pointing elsewhere (e.g. a temp dir),
+// and this contract scan must always read the coding-agent package source.
+const PACKAGE_ROOT = join(import.meta.dir, "..", "..");
+const SRC_ROOT = join(PACKAGE_ROOT, "src");
 const HARNESS_CONTROL_PLANE_DIR = join(SRC_ROOT, "harness-control-plane");
 const REMOVED_FRAME_MAPPER = join(HARNESS_CONTROL_PLANE_DIR, "frame-mapper.ts");
 
@@ -26,7 +30,7 @@ const ALLOWED_EVENT_TYPE_SWITCH_FILES = new Set([
 ]);
 
 function repoRelative(path: string): string {
-	return relative(process.cwd(), path).split(sep).join("/");
+	return relative(PACKAGE_ROOT, path).split(sep).join("/");
 }
 
 function walkFiles(root: string): string[] {
@@ -91,7 +95,7 @@ describe("agent-wire command contract red-team", () => {
 		}
 
 		for (const allowed of ALLOWED_EVENT_TYPE_SWITCH_FILES) {
-			const path = join(process.cwd(), allowed);
+			const path = join(PACKAGE_ROOT, allowed);
 			if (!/switch\s*\(\s*event\.type\s*\)/.test(readFileSync(path, "utf8"))) {
 				missingAllowed.push(allowed);
 			}
