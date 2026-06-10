@@ -27,6 +27,7 @@ import {
 } from "../../session/messages";
 import type { SessionContext } from "../../session/session-manager";
 import { formatBytes, formatDuration } from "../../tools/render-utils";
+import { buildAbortDisplayMessage } from "./abort-message";
 
 type TextBlock = { type: "text"; text: string };
 interface RenderInitialMessagesOptions {
@@ -319,12 +320,10 @@ export class UiHelpers {
 					!isAbortedSilently && (message.stopReason === "aborted" || message.stopReason === "error");
 				const errorMessage = hasErrorStop
 					? message.stopReason === "aborted"
-						? (() => {
-								const retryAttempt = this.ctx.session.retryAttempt;
-								return retryAttempt > 0
-									? `Aborted after ${retryAttempt} retry attempt${retryAttempt > 1 ? "s" : ""}`
-									: "Operation aborted";
-							})()
+						? buildAbortDisplayMessage({
+								errorMessage: message.errorMessage,
+								retryAttempt: this.ctx.session.retryAttempt,
+							})
 						: message.errorMessage || "Error"
 					: null;
 
