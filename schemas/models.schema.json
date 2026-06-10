@@ -131,6 +131,9 @@
 							"supportsToolChoice": {
 								"type": "boolean"
 							},
+							"supportsForcedToolChoice": {
+								"type": "boolean"
+							},
 							"disableReasoningOnForcedToolChoice": {
 								"type": "boolean"
 							},
@@ -521,6 +524,9 @@
 										"supportsToolChoice": {
 											"type": "boolean"
 										},
+										"supportsForcedToolChoice": {
+											"type": "boolean"
+										},
 										"disableReasoningOnForcedToolChoice": {
 											"type": "boolean"
 										},
@@ -876,6 +882,9 @@
 											"type": "boolean"
 										},
 										"supportsToolChoice": {
+											"type": "boolean"
+										},
+										"supportsForcedToolChoice": {
 											"type": "boolean"
 										},
 										"disableReasoningOnForcedToolChoice": {

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed direct Anthropic requests for Claude Fable/Mythos-style models that support tools but reject forced tool use by omitting forced `tool_choice` while preserving `auto`/`none` choices.
+
 ## [0.4.2] - 2026-06-09
 
 ### Fixed
