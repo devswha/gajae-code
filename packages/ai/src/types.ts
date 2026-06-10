@@ -805,6 +805,10 @@ export interface AnthropicCompat {
 	disableAdaptiveThinking?: boolean;
 	/** Whether tools may include Anthropic's per-tool eager_input_streaming flag. Default: true. */
 	supportsEagerToolInputStreaming?: boolean;
+	/** Whether the provider accepts the `tool_choice` parameter at all. Default: true. */
+	supportsToolChoice?: boolean;
+	/** Whether `tool_choice` may force a tool (`any` / named `tool`). Default: true except known incompatible Anthropic models. */
+	supportsForcedToolChoice?: boolean;
 	/** Whether long prompt-cache retention (`ttl: "1h"`) is supported. Default: true for canonical Anthropic API. */
 	supportsLongCacheRetention?: boolean;
 }

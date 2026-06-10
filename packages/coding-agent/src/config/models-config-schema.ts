@@ -36,6 +36,7 @@ export const OpenAICompatSchema = z.object({
 	allowsSyntheticReasoningContentForToolCalls: z.boolean().optional(),
 	requiresAssistantContentForToolCalls: z.boolean().optional(),
 	supportsToolChoice: z.boolean().optional(),
+	supportsForcedToolChoice: z.boolean().optional(),
 	disableReasoningOnForcedToolChoice: z.boolean().optional(),
 	disableReasoningOnToolChoice: z.boolean().optional(),
 	thinkingFormat: z.enum(["openai", "openrouter", "zai", "qwen", "qwen-chat-template"]).optional(),

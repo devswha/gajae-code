@@ -881,6 +881,8 @@ function getAnthropicCompat(
 		disableAdaptiveThinking: model.compat?.disableAdaptiveThinking ?? false,
 		supportsEagerToolInputStreaming: model.compat?.supportsEagerToolInputStreaming ?? true,
 		supportsLongCacheRetention: model.compat?.supportsLongCacheRetention ?? true,
+		supportsToolChoice: model.compat?.supportsToolChoice ?? true,
+		supportsForcedToolChoice: model.compat?.supportsForcedToolChoice ?? true,
 	};
 }
 
@@ -1682,6 +1684,30 @@ function disableThinkingIfToolChoiceForced(params: MessageCreateParamsStreaming)
 	}
 }
 
+function isForcedAnthropicToolChoice(toolChoice: NonNullable<AnthropicOptions["toolChoice"]>): boolean {
+	if (typeof toolChoice === "string") return toolChoice === "any";
+	if ("function" in toolChoice) return true;
+	if ("name" in toolChoice && typeof toolChoice.name === "string") return true;
+	return toolChoice.type === "tool" || toolChoice.type === "function";
+}
+
+function supportsForcedAnthropicToolChoice(model: Model<"anthropic-messages">): boolean {
+	const compat = model.compat;
+	if (compat?.supportsToolChoice === false || compat?.supportsForcedToolChoice === false) return false;
+
+	// Claude Mythos Preview is documented as accepting tools while rejecting
+	// forced tool use; Claude Fable currently returns the same Anthropic 400.
+	return !/^claude-(?:fable|mythos)(?:-|$)/i.test(model.id);
+}
+
+function shouldSendAnthropicToolChoice(
+	model: Model<"anthropic-messages">,
+	toolChoice: NonNullable<AnthropicOptions["toolChoice"]>,
+): boolean {
+	if (model.compat?.supportsToolChoice === false) return false;
+	return !isForcedAnthropicToolChoice(toolChoice) || supportsForcedAnthropicToolChoice(model);
+}
+
 function ensureMaxTokensForThinking(params: MessageCreateParamsStreaming, model: Model<"anthropic-messages">): void {
 	const thinking = params.thinking;
 	if (thinking?.type !== "enabled") return;
@@ -2029,7 +2055,7 @@ function buildParams(
 		(params as ParamsWithSpeed).speed = "fast";
 	}
 
-	if (options?.toolChoice) {
+	if (options?.toolChoice && shouldSendAnthropicToolChoice(model, options.toolChoice)) {
 		if (typeof options.toolChoice === "string") {
 			params.tool_choice = { type: options.toolChoice };
 		} else if (isOAuthToken && options.toolChoice.name) {
