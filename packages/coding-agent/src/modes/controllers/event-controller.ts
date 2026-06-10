@@ -20,6 +20,7 @@ import type { AgentSessionEvent } from "../../session/agent-session";
 import { isSilentAbort, readPendingDisplayTag } from "../../session/messages";
 import type { ResolveToolDetails } from "../../tools/resolve";
 import { interruptHint } from "../shared";
+import { buildAbortDisplayMessage } from "../utils/abort-message";
 
 type AgentSessionEventKind = AgentSessionEvent["type"];
 
@@ -419,10 +420,10 @@ export class EventController {
 				// controller ran, so reaching this branch implies the abort was NOT a
 				// silent internal transition.
 				const retryAttempt = this.ctx.session.retryAttempt;
-				errorMessage =
-					retryAttempt > 0
-						? `Aborted after ${retryAttempt} retry attempt${retryAttempt > 1 ? "s" : ""}`
-						: "Operation aborted";
+				errorMessage = buildAbortDisplayMessage({
+					errorMessage: this.ctx.streamingMessage.errorMessage,
+					retryAttempt,
+				});
 				this.ctx.streamingMessage.errorMessage = errorMessage;
 			}
 			if (silentlyAborted || ttsrSilenced) {

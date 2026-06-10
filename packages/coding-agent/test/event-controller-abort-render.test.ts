@@ -138,4 +138,48 @@ describe("EventController #handleMessageEnd abort labeling", () => {
 		expect(arg.stopReason).toBe("stop");
 		expect(arg.errorMessage).toBeUndefined();
 	});
+	it("C4: provider stream idle abort -> preserves root cause and remediation hint after retry", async () => {
+		const message = makeAssistantMessage({
+			stopReason: "aborted",
+			errorMessage: "Anthropic stream stalled while waiting for the next event",
+		});
+		const { controller, streamingComponent } = createFixture({
+			streamingMessage: message,
+			isTtsrAbortPending: false,
+			retryAttempt: 1,
+		});
+
+		await controller.handleEvent({ type: "message_end", message });
+
+		expect(message.errorMessage).toBe(
+			"Aborted after 1 retry attempt: Anthropic stream stalled while waiting for the next event. Hint: set PI_STREAM_IDLE_TIMEOUT_MS=300000 for slow reasoning/proxy streams, or PI_STREAM_IDLE_TIMEOUT_MS=0 to disable the watchdog.",
+		);
+		expect(streamingComponent.updateContent).toHaveBeenCalledTimes(1);
+		const arg = streamingComponent.updateContent.mock.calls[0]![0] as AssistantMessage;
+		expect(arg).toBe(message);
+		expect(arg.stopReason).toBe("aborted");
+		expect(arg.errorMessage).toContain("PI_STREAM_IDLE_TIMEOUT_MS=300000");
+	});
+
+	it("C5: replayed formatted abort label -> does not double-prefix or duplicate hints", async () => {
+		const formatted =
+			"Aborted after 1 retry attempt: Anthropic stream stalled while waiting for the next event. Hint: set PI_STREAM_IDLE_TIMEOUT_MS=300000 for slow reasoning/proxy streams, or PI_STREAM_IDLE_TIMEOUT_MS=0 to disable the watchdog.";
+		const message = makeAssistantMessage({
+			stopReason: "aborted",
+			errorMessage: formatted,
+		});
+		const { controller, streamingComponent } = createFixture({
+			streamingMessage: message,
+			isTtsrAbortPending: false,
+			retryAttempt: 0,
+		});
+
+		await controller.handleEvent({ type: "message_end", message });
+
+		expect(message.errorMessage).toBe(formatted);
+		expect(streamingComponent.updateContent).toHaveBeenCalledTimes(1);
+		const arg = streamingComponent.updateContent.mock.calls[0]![0] as AssistantMessage;
+		expect(arg).toBe(message);
+		expect(arg.errorMessage).toBe(formatted);
+	});
 });
