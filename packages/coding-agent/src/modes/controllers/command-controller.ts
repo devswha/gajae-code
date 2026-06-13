@@ -1538,7 +1538,7 @@ function resolveColumnWidth(count: number, available: number, trailing: number):
 	return ideal;
 }
 
-function renderUsageReports(
+export function renderUsageReports(
 	reports: UsageReport[],
 	uiTheme: typeof theme,
 	nowMs: number,
@@ -1592,17 +1592,35 @@ function renderUsageReports(
 
 		lines.push(uiTheme.bold(uiTheme.fg("accent", providerName)));
 
+		// Stable account column order shared across every window group, so each
+		// account keeps the same column in the 5h / 7d / ... rows. Rank accounts
+		// by total usage across their windows (a per-account value identical for
+		// every group), tie-broken by label for determinism.
+		const rankedAccounts = providerReports
+			.map(report => {
+				const [firstLimit] = report.limits;
+				return {
+					report,
+					total: report.limits.reduce((sum, limit) => sum + (resolveFraction(limit) ?? 0), 0),
+					label: firstLimit ? formatAccountLabel(firstLimit, report, 0) : formatUnlimitedReportLabel(report, 0),
+				};
+			})
+			.sort((a, b) => (a.total !== b.total ? b.total - a.total : a.label.localeCompare(b.label)));
+		const accountRank = new Map<UsageReport, number>();
+		rankedAccounts.forEach((entry, rank) => {
+			accountRank.set(entry.report, rank);
+		});
+
 		const renderableGroups = Array.from(limitGroups.values()).map(group => {
 			const entries = group.limits.map((limit, index) => ({
 				limit,
 				report: group.reports[index],
-				fraction: resolveFraction(limit),
 				index,
 			}));
 			entries.sort((a, b) => {
-				const aFraction = a.fraction ?? -1;
-				const bFraction = b.fraction ?? -1;
-				if (aFraction !== bFraction) return bFraction - aFraction;
+				const aRank = accountRank.get(a.report) ?? Number.MAX_SAFE_INTEGER;
+				const bRank = accountRank.get(b.report) ?? Number.MAX_SAFE_INTEGER;
+				if (aRank !== bRank) return aRank - bRank;
 				return a.index - b.index;
 			});
 			const sortedLimits = entries.map(entry => entry.limit);
