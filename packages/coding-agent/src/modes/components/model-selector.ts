@@ -705,6 +705,15 @@ export class ModelSelectorComponent extends Container {
 		return this.#getMissingProviders(profileOrProfiles).length === 0;
 	}
 
+	/**
+	 * A preset group is a list of alternative presets, not an all-or-nothing
+	 * bundle. Treat the group as usable when at least one member preset has all
+	 * of its required providers authenticated.
+	 */
+	#isPresetGroupUsable(profiles: ModelProfileDefinition[]): boolean {
+		return profiles.some(profile => this.#isPresetAuthenticated(profile));
+	}
+
 	async #refreshProviderAuth(): Promise<void> {
 		const providers = new Set<string>();
 		for (const profiles of this.#getPresetGroups().values()) {
@@ -763,7 +772,7 @@ export class ModelSelectorComponent extends Container {
 				continue;
 			}
 			if (row.kind === "group") {
-				const authenticated = this.#isPresetAuthenticated(row.profiles);
+				const authenticated = this.#isPresetGroupUsable(row.profiles);
 				const mark = this.#providerAuthPending ? "…" : authenticated ? "✓" : "✗";
 				const label = `${mark} ${row.groupId}`;
 				const renderedLabel = selected ? theme.fg("accent", label) : authenticated ? label : theme.fg("dim", label);
@@ -1158,18 +1167,26 @@ export class ModelSelectorComponent extends Container {
 			this.#switchToModelMode();
 			return;
 		}
-		const missing =
-			row.kind === "group" ? this.#getMissingProviders(row.profiles) : this.#getMissingProviders(row.profile);
+		if (row.kind === "group") {
+			// A group is a list of alternative presets; only surface a login hint
+			// when none of its members are usable. A partially-usable group stays
+			// navigable so the user can drill in and pick a usable member.
+			if (!this.#isPresetGroupUsable(row.profiles)) {
+				const missing = this.#getMissingProviders(row.profiles);
+				this.#presetLoginHint = `Run ${missing.map(provider => `/login ${provider}`).join(", ")}`;
+				this.#renderPresetLanding();
+			}
+			return;
+		}
+		const missing = this.#getMissingProviders(row.profile);
 		if (missing.length > 0) {
 			this.#presetLoginHint = `Run ${missing.map(provider => `/login ${provider}`).join(", ")}`;
 			this.#renderPresetLanding();
 			return;
 		}
-		if (row.kind === "profile") {
-			this.#previewProfileName = row.profile.name;
-			this.#presetLoginHint = undefined;
-			this.#renderPresetLanding();
-		}
+		this.#previewProfileName = row.profile.name;
+		this.#presetLoginHint = undefined;
+		this.#renderPresetLanding();
 	}
 
 	#beginActionMenuOrSelect(item: ModelItem | CanonicalModelItem): void {

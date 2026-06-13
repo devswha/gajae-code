@@ -48,6 +48,12 @@ const combo: ModelProfileDefinition = {
 	modelMapping: { default: "anthropic/claude-opus-4-8:xhigh", executor: "openai-codex/gpt-5.5:low" },
 	source: "builtin",
 };
+const comboOpencode: ModelProfileDefinition = {
+	name: "codex-opencodego",
+	requiredProviders: ["openai-codex", "opencode-go"],
+	modelMapping: { default: "opencode-go/kimi-k2.6", executor: "openai-codex/gpt-5.5:low" },
+	source: "builtin",
+};
 const minimax: ModelProfileDefinition = {
 	name: "minimax-medium",
 	requiredProviders: ["minimax-code"],
@@ -224,6 +230,20 @@ describe("preset landing adversarial QA", () => {
 		expect(text).toContain("/login minimax-code");
 		expect(text).not.toContain("minimax/");
 		expect(text).not.toContain("/login minimax ");
+	});
+
+	test("COMBOS group stays available when at least one combo is usable", async () => {
+		// Regression: a group is a list of alternative presets, not an all-or-nothing
+		// bundle. With codex + opencode-go authenticated, codex-opencodego is fully
+		// usable, so the COMBOS group must render as available (✓) even though the
+		// sibling opus-codex preset is missing its anthropic credential.
+		const selector = createSelector({
+			authenticatedProviders: ["openai-codex", "opencode-go"],
+			profiles: [codexEco, combo, comboOpencode],
+		});
+		const text = await rendered(selector);
+		expect(text).toContain("✓ COMBOS");
+		expect(text).not.toContain("✗ COMBOS");
 	});
 
 	test("preview clamps codex eco executor to low and omits suffix for suffixless selector", async () => {
