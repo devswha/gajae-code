@@ -37,12 +37,14 @@ function installTestTheme(): void {
 	setThemeInstance(testTheme);
 }
 
-function createControllerContext(options: {
-	confirm?: boolean;
-	activeProfile?: string;
-	defaultProfile?: string;
-	profiles?: ModelProfileDefinition[];
-} = {}) {
+function createControllerContext(
+	options: {
+		confirm?: boolean;
+		activeProfile?: string;
+		defaultProfile?: string;
+		profiles?: ModelProfileDefinition[];
+	} = {},
+) {
 	const settings = Settings.isolated({
 		"task.agentModelOverrides": { executor: "openai-codex/original-executor" },
 		"modelProfile.default": options.defaultProfile,
@@ -180,7 +182,10 @@ describe("login preset recommendation", () => {
 	});
 
 	test("plain minimax has no recommendation mapping", async () => {
-		const { ctx, session } = createControllerContext({ activeProfile: "codex-eco", profiles: [codexProfile, minimaxProfile, plainMinimaxProfile] });
+		const { ctx, session } = createControllerContext({
+			activeProfile: "codex-eco",
+			profiles: [codexProfile, minimaxProfile, plainMinimaxProfile],
+		});
 
 		await login(ctx, "minimax");
 

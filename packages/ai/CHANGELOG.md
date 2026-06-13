@@ -11,6 +11,17 @@
 
 - Moved the Claude Fable/Mythos forced-tool-use incapability knowledge out of Anthropic request code into catalog compat defaults (`toolChoiceSupport: "auto"`), applied during catalog generation, dynamic discovery, and bundled-model loading via a shared predicate.
 - Google `toolConfig` mapping now sends `FunctionCallingConfig` mode `ANY` for both `required` and `any` requests instead of silently relaxing `required` to `AUTO`.
+- Added bundled catalog entries for `anthropic/claude-fable-5`, `kimi-code/kimi-k2.7-code`, `minimax-code/minimax-v3`, and `xai/grok-composer-2.5-fast`.
+- Added composer-harness anchor/edit discipline injection for Cursor Composer and Grok Composer models so provider-specific coding harness priors do not override GJC hashline/edit contracts.
+
+### Changed
+
+- Optimized `EventStream` queue draining with a head-indexed queue to avoid repeated array shifts in hot streaming paths.
+- Clarified lazy builtin provider registration as the main provider loading path.
+
+### Fixed
+
+- Stripped `OpenAI-Beta` in the `openai-proxy` request transform profile so OpenAI-compatible proxies do not receive SDK beta headers.
 
 ## [0.4.5] - 2026-06-12
 
@@ -25,7 +36,6 @@
 - Set SQLite auth-store `busy_timeout` before enabling WAL so initialization is reliable under contention.
 - Resolved provider credentials from inherited or GJC-owned environment sources instead of trusting the caller project's `.env` overlays.
 - Rendered and executed Cursor-native tool calls without dropping provider-specific call details.
-- Stripped `OpenAI-Beta` in the `openai-proxy` request transform profile so OpenAI-compatible proxies do not receive SDK beta headers.
 
 ## [0.4.4] - 2026-06-10
 

@@ -10,12 +10,12 @@ import {
 import { type GjcModelAssignmentTargetId, isAuthenticated, type ModelRegistry } from "./model-registry";
 import { resolveModelRoleValue } from "./model-resolver";
 import type { Settings } from "./settings";
+
 type ModelProfileActivationSession = Pick<AgentSession, "model" | "thinkingLevel" | "sessionId"> & {
 	setModelTemporary?: AgentSession["setModelTemporary"];
 	setActiveModelProfile?: (name: string | undefined) => void;
 	getActiveModelProfile?: () => string | undefined;
 };
-
 
 export interface PrepareModelProfileActivationOptions {
 	session: ModelProfileActivationSession;

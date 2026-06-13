@@ -25,7 +25,6 @@ interface SelectionCapture {
 	selector?: string;
 }
 
-
 type TestModelSelectorSelection = {
 	kind: "assignment";
 	model: Model;
@@ -488,7 +487,9 @@ describe("ModelSelector canonical model selection", () => {
 		expect(actionRendered).toContain("Set as PLANNER (Planner)");
 		expect(actionRendered).toContain("Set as CRITIC (Critic)");
 		expect(actionRendered).not.toContain("Apply OpenAI Codex role preset");
-		expect(actionRendered).not.toContain("Default medium, Executor low, Architect xhigh, Planner medium, Critic high");
+		expect(actionRendered).not.toContain(
+			"Default medium, Executor low, Architect xhigh, Planner medium, Critic high",
+		);
 	});
 
 	test("prompts for reasoning when scoped OpenAI thinking came from defaults", async () => {

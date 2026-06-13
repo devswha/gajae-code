@@ -46,7 +46,7 @@ import { CustomProviderWizardComponent, type CustomProviderWizardSubmit } from "
 import { ExtensionDashboard } from "../components/extensions";
 import { HistorySearchComponent } from "../components/history-search";
 import { JobsOverlayComponent } from "../components/jobs-overlay";
-import { ModelSelectorComponent, type ModelSelectorSelection } from "../components/model-selector";
+import { ModelSelectorComponent } from "../components/model-selector";
 import { OAuthSelectorComponent } from "../components/oauth-selector";
 import { PluginSelectorComponent } from "../components/plugin-selector";
 import {
@@ -610,7 +610,6 @@ export class SelectorController {
 		});
 	}
 
-
 	async showPluginSelector(mode: "install" | "uninstall" = "install"): Promise<void> {
 		const mgr = new MarketplaceManager({
 			marketplacesRegistryPath: getMarketplacesRegistryPath(),
@@ -998,7 +997,10 @@ export class SelectorController {
 	}
 
 	async #handlePostLoginModelProfileRecommendation(providerId: string): Promise<void> {
-		const recommendedProfile = recommendModelProfileForProvider(providerId, this.ctx.session.modelRegistry.getModelProfiles());
+		const recommendedProfile = recommendModelProfileForProvider(
+			providerId,
+			this.ctx.session.modelRegistry.getModelProfiles(),
+		);
 		if (!recommendedProfile) {
 			return;
 		}

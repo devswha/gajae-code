@@ -18,8 +18,11 @@ import {
 	type ModelProfileDefinition,
 } from "../../config/model-profiles";
 import type { GjcModelAssignmentTargetId, ModelRegistry } from "../../config/model-registry";
-import { GJC_MODEL_ASSIGNMENT_TARGET_IDS, GJC_MODEL_ASSIGNMENT_TARGETS } from "../../config/model-registry";
-import { isAuthenticated } from "../../config/model-registry";
+import {
+	GJC_MODEL_ASSIGNMENT_TARGET_IDS,
+	GJC_MODEL_ASSIGNMENT_TARGETS,
+	isAuthenticated,
+} from "../../config/model-registry";
 import {
 	formatModelSelectorValue,
 	resolveModelRoleValue,
@@ -79,7 +82,6 @@ interface CanonicalModelItem {
 	thinkingLevel?: ThinkingLevel;
 	explicitThinkingLevel?: boolean;
 }
-
 
 type ScopedModelItem = ScopedModelSelection;
 
@@ -152,7 +154,13 @@ interface PresetBrowseRow {
 
 type PresetLandingRow = PresetGroupRow | PresetProfileRow | PresetBrowseRow;
 
-const PROFILE_ROLE_PREVIEW_ORDER: GjcModelAssignmentTargetId[] = ["default", "executor", "planner", "critic", "architect"];
+const PROFILE_ROLE_PREVIEW_ORDER: GjcModelAssignmentTargetId[] = [
+	"default",
+	"executor",
+	"planner",
+	"critic",
+	"architect",
+];
 const PRESET_SCOPE_LABELS = ["Apply for this session", "Set as default"];
 
 function isPrintableCharacter(keyData: string): boolean {
@@ -230,7 +238,7 @@ export class ModelSelectorComponent extends Container {
 		this.#temporaryOnly = options?.temporaryOnly ?? false;
 		this.#authSessionId = options?.sessionId;
 		const initialSearchInput = options?.initialSearchInput;
-		this.#viewMode = this.#temporaryOnly || !!initialSearchInput || scopedModels.length > 0 ? "models" : "presets";
+		this.#viewMode = this.#temporaryOnly || initialSearchInput || scopedModels.length > 0 ? "models" : "presets";
 
 		// Load current role assignments from settings
 		this.#loadRoleModels();
@@ -688,7 +696,9 @@ export class ModelSelectorComponent extends Container {
 		const profiles = Array.isArray(profileOrProfiles) ? profileOrProfiles : [profileOrProfiles];
 		const providers = new Set<string>();
 		for (const profile of profiles) for (const provider of profileRequiredProviders(profile)) providers.add(provider);
-		return [...providers].filter(provider => this.#isProviderAuthenticated(provider) !== true).sort((a, b) => a.localeCompare(b));
+		return [...providers]
+			.filter(provider => this.#isProviderAuthenticated(provider) !== true)
+			.sort((a, b) => a.localeCompare(b));
 	}
 
 	#isPresetAuthenticated(profileOrProfiles: ModelProfileDefinition | ModelProfileDefinition[]): boolean {
@@ -698,7 +708,8 @@ export class ModelSelectorComponent extends Container {
 	async #refreshProviderAuth(): Promise<void> {
 		const providers = new Set<string>();
 		for (const profiles of this.#getPresetGroups().values()) {
-			for (const profile of profiles) for (const provider of profileRequiredProviders(profile)) providers.add(provider);
+			for (const profile of profiles)
+				for (const provider of profileRequiredProviders(profile)) providers.add(provider);
 		}
 		this.#providerAuthPending = providers.size > 0;
 		this.#renderPresetLanding();
@@ -776,7 +787,13 @@ export class ModelSelectorComponent extends Container {
 
 	#renderPresetPreview(profile: ModelProfileDefinition): void {
 		this.#listContainer.addChild(new Spacer(1));
-		this.#listContainer.addChild(new Text(theme.fg("muted", `  Preset preview: ${getModelProfilePresentation(profile.name).displayName}`), 0, 0));
+		this.#listContainer.addChild(
+			new Text(
+				theme.fg("muted", `  Preset preview: ${getModelProfilePresentation(profile.name).displayName}`),
+				0,
+				0,
+			),
+		);
 		for (const role of PROFILE_ROLE_PREVIEW_ORDER) {
 			const selector = profile.modelMapping[role];
 			if (!selector) continue;
@@ -786,14 +803,18 @@ export class ModelSelectorComponent extends Container {
 				modelRegistry: this.#modelRegistry,
 			});
 			const label = GJC_MODEL_ASSIGNMENT_TARGETS[role].tag ?? role.toUpperCase();
-			this.#listContainer.addChild(new Text(`  ${label}: ${formatClampedModelSelector(selector, resolved.model)}`, 0, 0));
+			this.#listContainer.addChild(
+				new Text(`  ${label}: ${formatClampedModelSelector(selector, resolved.model)}`, 0, 0),
+			);
 		}
 		this.#listContainer.addChild(new Spacer(1));
 		if (this.#presetScopeMenuOpen) {
 			for (let i = 0; i < PRESET_SCOPE_LABELS.length; i++) {
 				const label = PRESET_SCOPE_LABELS[i] ?? "";
 				const prefix = i === this.#presetScopeIndex ? theme.fg("accent", `${theme.nav.cursor} `) : "  ";
-				this.#listContainer.addChild(new Text(`${prefix}${i === this.#presetScopeIndex ? theme.fg("accent", label) : label}`, 0, 0));
+				this.#listContainer.addChild(
+					new Text(`${prefix}${i === this.#presetScopeIndex ? theme.fg("accent", label) : label}`, 0, 0),
+				);
 			}
 		} else {
 			this.#listContainer.addChild(new Text(theme.fg("muted", "  Press Enter to apply this preset"), 0, 0));
@@ -987,7 +1008,6 @@ export class ModelSelectorComponent extends Container {
 		}
 	}
 
-
 	#getCurrentRoleThinkingLevel(role: string): ThinkingLevel {
 		return this.#roles[role]?.thinkingLevel ?? ThinkingLevel.Inherit;
 	}
@@ -996,7 +1016,9 @@ export class ModelSelectorComponent extends Container {
 	}
 
 	#getSelectedItem(): ModelItem | CanonicalModelItem | undefined {
-		return this.#isCanonicalTab() ? this.#filteredCanonicalModels[this.#selectedIndex] : this.#filteredModels[this.#selectedIndex];
+		return this.#isCanonicalTab()
+			? this.#filteredCanonicalModels[this.#selectedIndex]
+			: this.#filteredModels[this.#selectedIndex];
 	}
 
 	handleInput(keyData: string): void {
@@ -1065,7 +1087,8 @@ export class ModelSelectorComponent extends Container {
 			const rows = this.#getPresetRows();
 			if (rows.length === 0) return;
 			if (this.#presetScopeMenuOpen) {
-				this.#presetScopeIndex = this.#presetScopeIndex === 0 ? PRESET_SCOPE_LABELS.length - 1 : this.#presetScopeIndex - 1;
+				this.#presetScopeIndex =
+					this.#presetScopeIndex === 0 ? PRESET_SCOPE_LABELS.length - 1 : this.#presetScopeIndex - 1;
 			} else {
 				this.#presetCursor = this.#presetCursor === 0 ? rows.length - 1 : this.#presetCursor - 1;
 				this.#previewProfileName = undefined;
@@ -1116,7 +1139,11 @@ export class ModelSelectorComponent extends Container {
 
 	#handlePresetEnter(): void {
 		if (this.#presetScopeMenuOpen && this.#previewProfileName) {
-			this.#onSelectCallback({ kind: "profile", profileName: this.#previewProfileName, setDefault: this.#presetScopeIndex === 1 });
+			this.#onSelectCallback({
+				kind: "profile",
+				profileName: this.#previewProfileName,
+				setDefault: this.#presetScopeIndex === 1,
+			});
 			return;
 		}
 		if (this.#previewProfileName) {
@@ -1131,7 +1158,8 @@ export class ModelSelectorComponent extends Container {
 			this.#switchToModelMode();
 			return;
 		}
-		const missing = row.kind === "group" ? this.#getMissingProviders(row.profiles) : this.#getMissingProviders(row.profile);
+		const missing =
+			row.kind === "group" ? this.#getMissingProviders(row.profiles) : this.#getMissingProviders(row.profile);
 		if (missing.length > 0) {
 			this.#presetLoginHint = `Run ${missing.map(provider => `/login ${provider}`).join(", ")}`;
 			this.#renderPresetLanding();
@@ -1268,7 +1296,6 @@ export class ModelSelectorComponent extends Container {
 function requiresExplicitThinkingChoice(model: Model): boolean {
 	return model.reasoning === true && (model.provider === "openai" || model.provider === "openai-codex");
 }
-
 
 function getSelectableThinkingLevels(model: Model): ThinkingLevel[] {
 	const levels: ThinkingLevel[] = [ThinkingLevel.Off];

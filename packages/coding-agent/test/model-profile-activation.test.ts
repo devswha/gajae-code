@@ -11,7 +11,16 @@ import { BUILTIN_MODEL_PROFILES } from "../src/config/model-profiles";
 import { Settings } from "../src/config/settings";
 
 const model = (provider: string, id: string, thinking?: Model["thinking"]): Model =>
-	({ provider, id, name: id, api: "openai-responses", contextWindow: 1000, maxTokens: 1000, thinking, reasoning: thinking !== undefined }) as Model;
+	({
+		provider,
+		id,
+		name: id,
+		api: "openai-responses",
+		contextWindow: 1000,
+		maxTokens: 1000,
+		thinking,
+		reasoning: thinking !== undefined,
+	}) as Model;
 
 function fakeRegistry(options?: { missingProviders?: string[]; profiles?: ModelProfileDefinition[] }) {
 	const profiles = new Map<string, ModelProfileDefinition>();
@@ -42,7 +51,11 @@ function fakeRegistry(options?: { missingProviders?: string[]; profiles?: ModelP
 			model("openai-codex", "gpt-5.4"),
 			model("openai-codex", "gpt-5.1-codex-max"),
 			model("openai-codex", "gpt-5.2-codex"),
-			model("openai-codex", "gpt-5.5", { mode: "effort", minLevel: ThinkingLevel.Low, maxLevel: ThinkingLevel.XHigh }),
+			model("openai-codex", "gpt-5.5", {
+				mode: "effort",
+				minLevel: ThinkingLevel.Low,
+				maxLevel: ThinkingLevel.XHigh,
+			}),
 			model("openai-codex", "gpt-5.3-codex-spark"),
 			model("minimax-code", "minimax-m3"),
 			model("minimax-code-cn", "minimax-m3"),

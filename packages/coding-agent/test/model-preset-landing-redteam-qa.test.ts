@@ -2,12 +2,18 @@ import { beforeAll, describe, expect, test, vi } from "bun:test";
 import { Effort, type Model } from "@gajae-code/ai";
 import type { ModelProfileDefinition } from "@gajae-code/coding-agent/config/model-profiles";
 import { Settings } from "@gajae-code/coding-agent/config/settings";
-import { ModelSelectorComponent, type ModelSelectorSelection } from "@gajae-code/coding-agent/modes/components/model-selector";
+import {
+	ModelSelectorComponent,
+	type ModelSelectorSelection,
+} from "@gajae-code/coding-agent/modes/components/model-selector";
 import { getThemeByName, setThemeInstance } from "@gajae-code/coding-agent/modes/theme/theme";
 import type { TUI } from "@gajae-code/tui";
 
 function normalizeRenderedText(text: string): string {
-	return text.replace(/\x1b\[[0-9;]*m/g, "").replace(/\s+/g, " ").trim();
+	return text
+		.replace(/\x1b\[[0-9;]*m/g, "")
+		.replace(/\s+/g, " ")
+		.trim();
 }
 
 const model = (provider: string, id: string, minLevel = Effort.Low): Model =>
@@ -61,7 +67,10 @@ function installTestTheme(): void {
 	setThemeInstance(testTheme);
 }
 
-function createRegistry(authenticatedProviders: readonly string[], profiles: ModelProfileDefinition[] = [codexEco, combo, minimax, noSuffixProfile]) {
+function createRegistry(
+	authenticatedProviders: readonly string[],
+	profiles: ModelProfileDefinition[] = [codexEco, combo, minimax, noSuffixProfile],
+) {
 	const profileMap = new Map(profiles.map(profile => [profile.name, profile]));
 	return {
 		refresh: vi.fn(async () => {}),
@@ -74,26 +83,31 @@ function createRegistry(authenticatedProviders: readonly string[], profiles: Mod
 		getModelProfiles: () => new Map(profileMap),
 		getModelProfile: (name: string) => profileMap.get(name),
 		getAvailableModelProfileNames: () => [...profileMap.keys()],
-		getApiKeyForProvider: async (provider: string) => authenticatedProviders.includes(provider) ? "key" : undefined,
+		getApiKeyForProvider: async (provider: string) => (authenticatedProviders.includes(provider) ? "key" : undefined),
 		getApiKey: async () => "key",
 	};
 }
 
-function createSelector(options: {
-	authenticatedProviders?: readonly string[];
-	temporaryOnly?: boolean;
-	initialSearchInput?: string;
-	scopedModels?: Array<{ model: Model }>;
-	onCancel?: () => void;
-	onSelect?: (selection: ModelSelectorSelection) => void | Promise<void>;
-	profiles?: ModelProfileDefinition[];
-} = {}) {
+function createSelector(
+	options: {
+		authenticatedProviders?: readonly string[];
+		temporaryOnly?: boolean;
+		initialSearchInput?: string;
+		scopedModels?: Array<{ model: Model }>;
+		onCancel?: () => void;
+		onSelect?: (selection: ModelSelectorSelection) => void | Promise<void>;
+		profiles?: ModelProfileDefinition[];
+	} = {},
+) {
 	const ui = { requestRender: vi.fn() } as unknown as TUI;
 	return new ModelSelectorComponent(
 		ui,
 		undefined,
 		Settings.isolated(),
-		createRegistry(options.authenticatedProviders ?? ["openai-codex", "anthropic", "minimax-code", "provider-a"], options.profiles) as never,
+		createRegistry(
+			options.authenticatedProviders ?? ["openai-codex", "anthropic", "minimax-code", "provider-a"],
+			options.profiles,
+		) as never,
 		options.scopedModels ?? [],
 		options.onSelect ?? (() => {}),
 		options.onCancel ?? (() => {}),
@@ -185,7 +199,12 @@ describe("preset landing adversarial QA", () => {
 
 	test("partial combo auth blocks selection and MiniMax hint uses canonical provider id only", async () => {
 		const selections: ModelSelectorSelection[] = [];
-		const comboSelector = createSelector({ authenticatedProviders: ["openai-codex"], onSelect: selection => { selections.push(selection); } });
+		const comboSelector = createSelector({
+			authenticatedProviders: ["openai-codex"],
+			onSelect: selection => {
+				selections.push(selection);
+			},
+		});
 		await rendered(comboSelector);
 		comboSelector.handleInput("\n"); // expand CODEX so COMBOS is visible
 		comboSelector.handleInput("\x1b[B"); // codex-eco profile

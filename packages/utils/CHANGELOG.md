@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Improved Bun runtime version diagnostics with detected runtime path plus platform-specific upgrade and PATH remediation guidance.
+
+### Fixed
+
+- Resolved credential environment values set after module import without trusting caller-project `.env` overlays, preserving live shell/GJC-owned credential overrides.
+
 ## [0.4.5] - 2026-06-12
 
 ### Fixed

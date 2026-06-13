@@ -1,53 +1,335 @@
 import { describe, expect, test } from "bun:test";
-import modelsJson from "../../ai/src/models.json";
 import {
 	BUILTIN_MODEL_PROFILES,
 	formatAvailableProfileNames,
 	getModelProfilePresentation,
 	groupModelProfilesForPresetLanding,
+	type ModelProfileDefinition,
 	mergeModelProfiles,
 	recommendModelProfileForProvider,
 	resolveProfileBindings,
-	type ModelProfileDefinition,
 } from "@gajae-code/coding-agent/config/model-profiles";
 import { parseModelString } from "@gajae-code/coding-agent/config/model-resolver";
 import { ProfileModelSelectorSchema } from "@gajae-code/coding-agent/config/models-config-schema";
+import modelsJson from "../../ai/src/models.json";
 
 type Role = "default" | "executor" | "planner" | "critic" | "architect";
 
 const roles: Role[] = ["default", "executor", "planner", "critic", "architect"];
 
 const expectedProfiles: Array<{ name: string; requiredProviders: string[]; mapping: Record<Role, string> }> = [
-	{ name: "codex-eco", requiredProviders: ["openai-codex"], mapping: { default: "openai-codex/gpt-5.5:low", executor: "openai-codex/gpt-5.5:minimal", planner: "openai-codex/gpt-5.5:low", critic: "openai-codex/gpt-5.5:medium", architect: "openai-codex/gpt-5.5:high" } },
-	{ name: "codex-medium", requiredProviders: ["openai-codex"], mapping: { default: "openai-codex/gpt-5.5:medium", executor: "openai-codex/gpt-5.5:low", planner: "openai-codex/gpt-5.5:medium", critic: "openai-codex/gpt-5.5:high", architect: "openai-codex/gpt-5.5:xhigh" } },
-	{ name: "codex-pro", requiredProviders: ["openai-codex"], mapping: { default: "openai-codex/gpt-5.5:xhigh", executor: "openai-codex/gpt-5.5:medium", planner: "openai-codex/gpt-5.5:high", critic: "openai-codex/gpt-5.5:xhigh", architect: "openai-codex/gpt-5.5:xhigh" } },
-	{ name: "opencodego", requiredProviders: ["opencode-go"], mapping: { default: "opencode-go/kimi-k2.6", executor: "opencode-go/deepseek-v4-flash", planner: "opencode-go/qwen3.7-max", critic: "opencode-go/mimo-v2.5-pro", architect: "opencode-go/deepseek-v4-pro" } },
-	{ name: "claude-opus", requiredProviders: ["anthropic"], mapping: { default: "anthropic/claude-opus-4-8:xhigh", executor: "anthropic/claude-sonnet-4-6", planner: "anthropic/claude-opus-4-8:low", critic: "anthropic/claude-opus-4-8:high", architect: "anthropic/claude-opus-4-8:xhigh" } },
-	{ name: "claude-fable", requiredProviders: ["anthropic"], mapping: { default: "anthropic/claude-fable-5:xhigh", executor: "anthropic/claude-sonnet-4-6", planner: "anthropic/claude-opus-4-8:low", critic: "anthropic/claude-opus-4-8:high", architect: "anthropic/claude-fable-5:xhigh" } },
-	{ name: "glm-eco", requiredProviders: ["zai"], mapping: { default: "zai/glm-5.1:low", executor: "zai/glm-5.1:minimal", planner: "zai/glm-5.1:low", critic: "zai/glm-5.1:medium", architect: "zai/glm-5.1:high" } },
-	{ name: "glm-medium", requiredProviders: ["zai"], mapping: { default: "zai/glm-5.1:medium", executor: "zai/glm-5.1:low", planner: "zai/glm-5.1:medium", critic: "zai/glm-5.1:high", architect: "zai/glm-5.1:xhigh" } },
-	{ name: "glm-pro", requiredProviders: ["zai"], mapping: { default: "zai/glm-5.1:xhigh", executor: "zai/glm-5.1:medium", planner: "zai/glm-5.1:high", critic: "zai/glm-5.1:xhigh", architect: "zai/glm-5.1:xhigh" } },
-	{ name: "kimi-coding-plan-eco", requiredProviders: ["kimi-code"], mapping: { default: "kimi-code/kimi-k2.7-code:low", executor: "kimi-code/kimi-k2.7-code:minimal", planner: "kimi-code/kimi-k2.7-code:low", critic: "kimi-code/kimi-k2.7-code:medium", architect: "kimi-code/kimi-k2.7-code:high" } },
-	{ name: "kimi-coding-plan-medium", requiredProviders: ["kimi-code"], mapping: { default: "kimi-code/kimi-k2.7-code:medium", executor: "kimi-code/kimi-k2.7-code:low", planner: "kimi-code/kimi-k2.7-code:medium", critic: "kimi-code/kimi-k2.7-code:high", architect: "kimi-code/kimi-k2.7-code:xhigh" } },
-	{ name: "kimi-coding-plan-pro", requiredProviders: ["kimi-code"], mapping: { default: "kimi-code/kimi-k2.7-code:xhigh", executor: "kimi-code/kimi-k2.7-code:medium", planner: "kimi-code/kimi-k2.7-code:high", critic: "kimi-code/kimi-k2.7-code:xhigh", architect: "kimi-code/kimi-k2.7-code:xhigh" } },
-	{ name: "mimo-eco", requiredProviders: ["xiaomi"], mapping: { default: "xiaomi/mimo-v2.5-pro:low", executor: "xiaomi/mimo-v2.5-pro:minimal", planner: "xiaomi/mimo-v2.5-pro:low", critic: "xiaomi/mimo-v2.5-pro:medium", architect: "xiaomi/mimo-v2.5-pro:high" } },
-	{ name: "mimo-medium", requiredProviders: ["xiaomi"], mapping: { default: "xiaomi/mimo-v2.5-pro:medium", executor: "xiaomi/mimo-v2.5-pro:low", planner: "xiaomi/mimo-v2.5-pro:medium", critic: "xiaomi/mimo-v2.5-pro:high", architect: "xiaomi/mimo-v2.5-pro:xhigh" } },
-	{ name: "mimo-pro", requiredProviders: ["xiaomi"], mapping: { default: "xiaomi/mimo-v2.5-pro:xhigh", executor: "xiaomi/mimo-v2.5-pro:medium", planner: "xiaomi/mimo-v2.5-pro:high", critic: "xiaomi/mimo-v2.5-pro:xhigh", architect: "xiaomi/mimo-v2.5-pro:xhigh" } },
-	{ name: "grok-eco", requiredProviders: ["xai"], mapping: { default: "xai/grok-4.3:low", executor: "xai/grok-4.3:minimal", planner: "xai/grok-4.3:low", critic: "xai/grok-4.3:medium", architect: "xai/grok-4.3:high" } },
-	{ name: "grok-medium", requiredProviders: ["xai"], mapping: { default: "xai/grok-4.3:medium", executor: "xai/grok-4.3:low", planner: "xai/grok-4.3:medium", critic: "xai/grok-4.3:high", architect: "xai/grok-4.3:xhigh" } },
-	{ name: "grok-pro", requiredProviders: ["xai"], mapping: { default: "xai/grok-4.3:xhigh", executor: "xai/grok-4.3:medium", planner: "xai/grok-4.3:high", critic: "xai/grok-4.3:xhigh", architect: "xai/grok-4.3:xhigh" } },
-	{ name: "cursor-eco", requiredProviders: ["cursor"], mapping: { default: "cursor/composer-1.5:low", executor: "cursor/composer-1.5:minimal", planner: "cursor/composer-1.5:low", critic: "cursor/composer-1.5:medium", architect: "cursor/composer-1.5:high" } },
-	{ name: "cursor-medium", requiredProviders: ["cursor"], mapping: { default: "cursor/composer-1.5:medium", executor: "cursor/composer-1.5:low", planner: "cursor/composer-1.5:medium", critic: "cursor/composer-1.5:high", architect: "cursor/composer-1.5:xhigh" } },
-	{ name: "cursor-pro", requiredProviders: ["cursor"], mapping: { default: "cursor/composer-1.5:xhigh", executor: "cursor/composer-1.5:medium", planner: "cursor/composer-1.5:high", critic: "cursor/composer-1.5:xhigh", architect: "cursor/composer-1.5:xhigh" } },
-	{ name: "minimax-eco", requiredProviders: ["minimax-code"], mapping: { default: "minimax-code/minimax-v3:low", executor: "minimax-code/minimax-v3:minimal", planner: "minimax-code/minimax-v3:low", critic: "minimax-code/minimax-v3:medium", architect: "minimax-code/minimax-v3:high" } },
-	{ name: "minimax-medium", requiredProviders: ["minimax-code"], mapping: { default: "minimax-code/minimax-v3:medium", executor: "minimax-code/minimax-v3:low", planner: "minimax-code/minimax-v3:medium", critic: "minimax-code/minimax-v3:high", architect: "minimax-code/minimax-v3:xhigh" } },
-	{ name: "minimax-pro", requiredProviders: ["minimax-code"], mapping: { default: "minimax-code/minimax-v3:xhigh", executor: "minimax-code/minimax-v3:medium", planner: "minimax-code/minimax-v3:high", critic: "minimax-code/minimax-v3:xhigh", architect: "minimax-code/minimax-v3:xhigh" } },
-	{ name: "fable-codex", requiredProviders: ["anthropic", "openai-codex"], mapping: { default: "anthropic/claude-fable-5:xhigh", executor: "openai-codex/gpt-5.5:low", planner: "openai-codex/gpt-5.5:medium", critic: "openai-codex/gpt-5.5:high", architect: "openai-codex/gpt-5.5:xhigh" } },
-	{ name: "opus-codex", requiredProviders: ["anthropic", "openai-codex"], mapping: { default: "anthropic/claude-opus-4-8:xhigh", executor: "openai-codex/gpt-5.5:low", planner: "openai-codex/gpt-5.5:medium", critic: "openai-codex/gpt-5.5:high", architect: "openai-codex/gpt-5.5:xhigh" } },
-	{ name: "codex-opencodego", requiredProviders: ["openai-codex", "opencode-go"], mapping: { default: "openai-codex/gpt-5.5:medium", executor: "opencode-go/deepseek-v4-pro", planner: "opencode-go/kimi-k2.6", critic: "opencode-go/mimo-v2.5-pro", architect: "openai-codex/gpt-5.5:xhigh" } },
+	{
+		name: "codex-eco",
+		requiredProviders: ["openai-codex"],
+		mapping: {
+			default: "openai-codex/gpt-5.5:low",
+			executor: "openai-codex/gpt-5.5:minimal",
+			planner: "openai-codex/gpt-5.5:low",
+			critic: "openai-codex/gpt-5.5:medium",
+			architect: "openai-codex/gpt-5.5:high",
+		},
+	},
+	{
+		name: "codex-medium",
+		requiredProviders: ["openai-codex"],
+		mapping: {
+			default: "openai-codex/gpt-5.5:medium",
+			executor: "openai-codex/gpt-5.5:low",
+			planner: "openai-codex/gpt-5.5:medium",
+			critic: "openai-codex/gpt-5.5:high",
+			architect: "openai-codex/gpt-5.5:xhigh",
+		},
+	},
+	{
+		name: "codex-pro",
+		requiredProviders: ["openai-codex"],
+		mapping: {
+			default: "openai-codex/gpt-5.5:xhigh",
+			executor: "openai-codex/gpt-5.5:medium",
+			planner: "openai-codex/gpt-5.5:high",
+			critic: "openai-codex/gpt-5.5:xhigh",
+			architect: "openai-codex/gpt-5.5:xhigh",
+		},
+	},
+	{
+		name: "opencodego",
+		requiredProviders: ["opencode-go"],
+		mapping: {
+			default: "opencode-go/kimi-k2.6",
+			executor: "opencode-go/deepseek-v4-flash",
+			planner: "opencode-go/qwen3.7-max",
+			critic: "opencode-go/mimo-v2.5-pro",
+			architect: "opencode-go/deepseek-v4-pro",
+		},
+	},
+	{
+		name: "claude-opus",
+		requiredProviders: ["anthropic"],
+		mapping: {
+			default: "anthropic/claude-opus-4-8:xhigh",
+			executor: "anthropic/claude-sonnet-4-6",
+			planner: "anthropic/claude-opus-4-8:low",
+			critic: "anthropic/claude-opus-4-8:high",
+			architect: "anthropic/claude-opus-4-8:xhigh",
+		},
+	},
+	{
+		name: "claude-fable",
+		requiredProviders: ["anthropic"],
+		mapping: {
+			default: "anthropic/claude-fable-5:xhigh",
+			executor: "anthropic/claude-sonnet-4-6",
+			planner: "anthropic/claude-opus-4-8:low",
+			critic: "anthropic/claude-opus-4-8:high",
+			architect: "anthropic/claude-fable-5:xhigh",
+		},
+	},
+	{
+		name: "glm-eco",
+		requiredProviders: ["zai"],
+		mapping: {
+			default: "zai/glm-5.1:low",
+			executor: "zai/glm-5.1:minimal",
+			planner: "zai/glm-5.1:low",
+			critic: "zai/glm-5.1:medium",
+			architect: "zai/glm-5.1:high",
+		},
+	},
+	{
+		name: "glm-medium",
+		requiredProviders: ["zai"],
+		mapping: {
+			default: "zai/glm-5.1:medium",
+			executor: "zai/glm-5.1:low",
+			planner: "zai/glm-5.1:medium",
+			critic: "zai/glm-5.1:high",
+			architect: "zai/glm-5.1:xhigh",
+		},
+	},
+	{
+		name: "glm-pro",
+		requiredProviders: ["zai"],
+		mapping: {
+			default: "zai/glm-5.1:xhigh",
+			executor: "zai/glm-5.1:medium",
+			planner: "zai/glm-5.1:high",
+			critic: "zai/glm-5.1:xhigh",
+			architect: "zai/glm-5.1:xhigh",
+		},
+	},
+	{
+		name: "kimi-coding-plan-eco",
+		requiredProviders: ["kimi-code"],
+		mapping: {
+			default: "kimi-code/kimi-k2.7-code:low",
+			executor: "kimi-code/kimi-k2.7-code:minimal",
+			planner: "kimi-code/kimi-k2.7-code:low",
+			critic: "kimi-code/kimi-k2.7-code:medium",
+			architect: "kimi-code/kimi-k2.7-code:high",
+		},
+	},
+	{
+		name: "kimi-coding-plan-medium",
+		requiredProviders: ["kimi-code"],
+		mapping: {
+			default: "kimi-code/kimi-k2.7-code:medium",
+			executor: "kimi-code/kimi-k2.7-code:low",
+			planner: "kimi-code/kimi-k2.7-code:medium",
+			critic: "kimi-code/kimi-k2.7-code:high",
+			architect: "kimi-code/kimi-k2.7-code:xhigh",
+		},
+	},
+	{
+		name: "kimi-coding-plan-pro",
+		requiredProviders: ["kimi-code"],
+		mapping: {
+			default: "kimi-code/kimi-k2.7-code:xhigh",
+			executor: "kimi-code/kimi-k2.7-code:medium",
+			planner: "kimi-code/kimi-k2.7-code:high",
+			critic: "kimi-code/kimi-k2.7-code:xhigh",
+			architect: "kimi-code/kimi-k2.7-code:xhigh",
+		},
+	},
+	{
+		name: "mimo-eco",
+		requiredProviders: ["xiaomi"],
+		mapping: {
+			default: "xiaomi/mimo-v2.5-pro:low",
+			executor: "xiaomi/mimo-v2.5-pro:minimal",
+			planner: "xiaomi/mimo-v2.5-pro:low",
+			critic: "xiaomi/mimo-v2.5-pro:medium",
+			architect: "xiaomi/mimo-v2.5-pro:high",
+		},
+	},
+	{
+		name: "mimo-medium",
+		requiredProviders: ["xiaomi"],
+		mapping: {
+			default: "xiaomi/mimo-v2.5-pro:medium",
+			executor: "xiaomi/mimo-v2.5-pro:low",
+			planner: "xiaomi/mimo-v2.5-pro:medium",
+			critic: "xiaomi/mimo-v2.5-pro:high",
+			architect: "xiaomi/mimo-v2.5-pro:xhigh",
+		},
+	},
+	{
+		name: "mimo-pro",
+		requiredProviders: ["xiaomi"],
+		mapping: {
+			default: "xiaomi/mimo-v2.5-pro:xhigh",
+			executor: "xiaomi/mimo-v2.5-pro:medium",
+			planner: "xiaomi/mimo-v2.5-pro:high",
+			critic: "xiaomi/mimo-v2.5-pro:xhigh",
+			architect: "xiaomi/mimo-v2.5-pro:xhigh",
+		},
+	},
+	{
+		name: "grok-eco",
+		requiredProviders: ["xai"],
+		mapping: {
+			default: "xai/grok-4.3:low",
+			executor: "xai/grok-4.3:minimal",
+			planner: "xai/grok-4.3:low",
+			critic: "xai/grok-4.3:medium",
+			architect: "xai/grok-4.3:high",
+		},
+	},
+	{
+		name: "grok-medium",
+		requiredProviders: ["xai"],
+		mapping: {
+			default: "xai/grok-4.3:medium",
+			executor: "xai/grok-4.3:low",
+			planner: "xai/grok-4.3:medium",
+			critic: "xai/grok-4.3:high",
+			architect: "xai/grok-4.3:xhigh",
+		},
+	},
+	{
+		name: "grok-pro",
+		requiredProviders: ["xai"],
+		mapping: {
+			default: "xai/grok-4.3:xhigh",
+			executor: "xai/grok-4.3:medium",
+			planner: "xai/grok-4.3:high",
+			critic: "xai/grok-4.3:xhigh",
+			architect: "xai/grok-4.3:xhigh",
+		},
+	},
+	{
+		name: "cursor-eco",
+		requiredProviders: ["cursor"],
+		mapping: {
+			default: "cursor/composer-1.5:low",
+			executor: "cursor/composer-1.5:minimal",
+			planner: "cursor/composer-1.5:low",
+			critic: "cursor/composer-1.5:medium",
+			architect: "cursor/composer-1.5:high",
+		},
+	},
+	{
+		name: "cursor-medium",
+		requiredProviders: ["cursor"],
+		mapping: {
+			default: "cursor/composer-1.5:medium",
+			executor: "cursor/composer-1.5:low",
+			planner: "cursor/composer-1.5:medium",
+			critic: "cursor/composer-1.5:high",
+			architect: "cursor/composer-1.5:xhigh",
+		},
+	},
+	{
+		name: "cursor-pro",
+		requiredProviders: ["cursor"],
+		mapping: {
+			default: "cursor/composer-1.5:xhigh",
+			executor: "cursor/composer-1.5:medium",
+			planner: "cursor/composer-1.5:high",
+			critic: "cursor/composer-1.5:xhigh",
+			architect: "cursor/composer-1.5:xhigh",
+		},
+	},
+	{
+		name: "minimax-eco",
+		requiredProviders: ["minimax-code"],
+		mapping: {
+			default: "minimax-code/minimax-v3:low",
+			executor: "minimax-code/minimax-v3:minimal",
+			planner: "minimax-code/minimax-v3:low",
+			critic: "minimax-code/minimax-v3:medium",
+			architect: "minimax-code/minimax-v3:high",
+		},
+	},
+	{
+		name: "minimax-medium",
+		requiredProviders: ["minimax-code"],
+		mapping: {
+			default: "minimax-code/minimax-v3:medium",
+			executor: "minimax-code/minimax-v3:low",
+			planner: "minimax-code/minimax-v3:medium",
+			critic: "minimax-code/minimax-v3:high",
+			architect: "minimax-code/minimax-v3:xhigh",
+		},
+	},
+	{
+		name: "minimax-pro",
+		requiredProviders: ["minimax-code"],
+		mapping: {
+			default: "minimax-code/minimax-v3:xhigh",
+			executor: "minimax-code/minimax-v3:medium",
+			planner: "minimax-code/minimax-v3:high",
+			critic: "minimax-code/minimax-v3:xhigh",
+			architect: "minimax-code/minimax-v3:xhigh",
+		},
+	},
+	{
+		name: "fable-codex",
+		requiredProviders: ["anthropic", "openai-codex"],
+		mapping: {
+			default: "anthropic/claude-fable-5:xhigh",
+			executor: "openai-codex/gpt-5.5:low",
+			planner: "openai-codex/gpt-5.5:medium",
+			critic: "openai-codex/gpt-5.5:high",
+			architect: "openai-codex/gpt-5.5:xhigh",
+		},
+	},
+	{
+		name: "opus-codex",
+		requiredProviders: ["anthropic", "openai-codex"],
+		mapping: {
+			default: "anthropic/claude-opus-4-8:xhigh",
+			executor: "openai-codex/gpt-5.5:low",
+			planner: "openai-codex/gpt-5.5:medium",
+			critic: "openai-codex/gpt-5.5:high",
+			architect: "openai-codex/gpt-5.5:xhigh",
+		},
+	},
+	{
+		name: "codex-opencodego",
+		requiredProviders: ["openai-codex", "opencode-go"],
+		mapping: {
+			default: "openai-codex/gpt-5.5:medium",
+			executor: "opencode-go/deepseek-v4-pro",
+			planner: "opencode-go/kimi-k2.6",
+			critic: "opencode-go/mimo-v2.5-pro",
+			architect: "openai-codex/gpt-5.5:xhigh",
+		},
+	},
 ];
 
-const oldNames = ["opencode-go-eco", "opencode-go-standard", "opencode-go-pro", "codex-standard", "opencode-go-codex-eco", "opencode-go-codex-standard", "opencode-go-codex-pro", "minimax-standard", "minimax-cn-standard", "kimi-standard", "glm-standard"];
+const oldNames = [
+	"opencode-go-eco",
+	"opencode-go-standard",
+	"opencode-go-pro",
+	"codex-standard",
+	"opencode-go-codex-eco",
+	"opencode-go-codex-standard",
+	"opencode-go-codex-pro",
+	"minimax-standard",
+	"minimax-cn-standard",
+	"kimi-standard",
+	"glm-standard",
+];
 
 function selectorExists(selector: string): boolean {
 	const parsed = parseModelString(selector);
@@ -57,7 +339,9 @@ function selectorExists(selector: string): boolean {
 
 describe("built-in model profile catalog", () => {
 	test("contains exact 26-profile matrix cell-for-cell", () => {
-		expect(BUILTIN_MODEL_PROFILES.map(profile => profile.name)).toEqual(expectedProfiles.map(profile => profile.name));
+		expect(BUILTIN_MODEL_PROFILES.map(profile => profile.name)).toEqual(
+			expectedProfiles.map(profile => profile.name),
+		);
 		for (const expected of expectedProfiles) {
 			const profile = BUILTIN_MODEL_PROFILES.find(candidate => candidate.name === expected.name);
 			expect(profile?.requiredProviders).toEqual(expected.requiredProviders);
@@ -96,8 +380,22 @@ describe("built-in model profile catalog", () => {
 
 	test("presentation groups and provider recommendations are pure catalog helpers", () => {
 		const profiles = mergeModelProfiles();
-		expect(getModelProfilePresentation("kimi-coding-plan-medium")).toEqual({ displayName: "Kimi Coding Plan Medium", providerGroup: "KIMI CODING PLAN" });
-		expect([...groupModelProfilesForPresetLanding(profiles).keys()]).toEqual(["CODEX", "OPENCODEGO", "CLAUDE", "GLM", "KIMI CODING PLAN", "MIMO", "GROK", "CURSOR", "MINIMAX", "COMBOS"]);
+		expect(getModelProfilePresentation("kimi-coding-plan-medium")).toEqual({
+			displayName: "Kimi Coding Plan Medium",
+			providerGroup: "KIMI CODING PLAN",
+		});
+		expect([...groupModelProfilesForPresetLanding(profiles).keys()]).toEqual([
+			"CODEX",
+			"OPENCODEGO",
+			"CLAUDE",
+			"GLM",
+			"KIMI CODING PLAN",
+			"MIMO",
+			"GROK",
+			"CURSOR",
+			"MINIMAX",
+			"COMBOS",
+		]);
 		expect(recommendModelProfileForProvider("openai-codex", profiles)?.name).toBe("codex-medium");
 		expect(recommendModelProfileForProvider("anthropic", profiles)?.name).toBe("claude-opus");
 		expect(recommendModelProfileForProvider("opencode-go", profiles)?.name).toBe("opencodego");
@@ -116,7 +414,15 @@ describe("built-in model profile catalog", () => {
 			},
 		});
 		const profile = merged.get("codex-medium");
-		expect(profile).toEqual({ name: "codex-medium", requiredProviders: ["custom"], modelMapping: { default: "custom/model" }, source: "user" });
-		expect(resolveProfileBindings(profile as ModelProfileDefinition)).toEqual({ defaultSelector: "custom/model", agentModelOverrides: {} });
+		expect(profile).toEqual({
+			name: "codex-medium",
+			requiredProviders: ["custom"],
+			modelMapping: { default: "custom/model" },
+			source: "user",
+		});
+		expect(resolveProfileBindings(profile as ModelProfileDefinition)).toEqual({
+			defaultSelector: "custom/model",
+			agentModelOverrides: {},
+		});
 	});
 });

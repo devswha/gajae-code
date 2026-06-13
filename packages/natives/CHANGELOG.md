@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed pi-shell bash fixups on multibyte UTF-8 commands by converting parser source indexes to byte offsets before stripping `head`/`tail` pipelines.
+
 ## [0.4.5] - 2026-06-12
 
 ### Changed
