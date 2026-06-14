@@ -10,9 +10,6 @@
 ### Added
 
 - Added three bundled dark TUI migration themes — `claude-code`, `codex`, and `opencode` — whose palettes mirror the Claude Code, OpenAI Codex CLI, and opencode TUIs for easy eye-migration. They join the crustacean defaults (`red-claw` dark, `blue-crab` light) as selectable built-ins via Settings or `/theme`; defaults are unchanged and the new themes keep GJC's default symbol identity. A built-in inventory test now validates every bundled theme against the required `THEME_COLOR_KEYS` token set, name/key equality, var resolution, dark classification, and brand-vs-semantic token separation.
-
-### Added
-
 - Added `GJC_CREDENTIAL_RANKING_MODE` env var (`balanced` (default) | `earliest-reset`), wired through `discoverAuthStorage` into `AuthStorage.credentialRankingMode`. `earliest-reset` selects multi-account OAuth credentials earliest-expiry-first so soon-to-reset tumbling-window quota (e.g. Claude 5h/7d) is drained before it is lost at reset; unset/unknown leaves the default `balanced` behavior unchanged.
 
 ## [0.5.1] - 2026-06-14
