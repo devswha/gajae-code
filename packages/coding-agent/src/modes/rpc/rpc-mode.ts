@@ -10,6 +10,8 @@
  * - Events: AgentSessionEvent objects streamed as they occur
  * - Extension UI: Extension UI requests are emitted, client responds with extension_ui_response
  */
+
+import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { $pickenv, readLines, Snowflake } from "@gajae-code/utils";
 import type {
@@ -23,6 +25,7 @@ import { initializeExtensions } from "../runtime-init";
 import { dispatchRpcCommand } from "../shared/agent-wire/command-dispatch";
 import { AgentWireFrameSequencer, toAgentWireEventFrame } from "../shared/agent-wire/event-envelope";
 import { rpcError as error } from "../shared/agent-wire/responses";
+import { registerRpcSession, unregisterRpcSession } from "../shared/agent-wire/session-registry";
 import { defaultAuditPath, UnattendedAuditLog } from "../shared/agent-wire/unattended-audit";
 import { UnattendedSessionControlPlane } from "../shared/agent-wire/unattended-session";
 import { FileGateStore } from "../shared/agent-wire/workflow-gate-broker";
@@ -158,6 +161,7 @@ export function requestRpcEditor(
 export async function runRpcMode(
 	session: AgentSession,
 	setToolUIContext?: (uiContext: ExtensionUIContext, hasUI: boolean) => void,
+	options?: { listen?: string },
 ): Promise<never> {
 	// Signal to RPC clients that the server is ready to accept commands
 	// Suppress terminal notifications: they write \x07 (BEL) or OSC sequences directly to
@@ -166,10 +170,18 @@ export async function runRpcMode(
 	// may write there.
 	process.env.PI_NOTIFICATIONS = "off";
 
-	process.stdout.write(`${JSON.stringify({ type: "ready" })}\n`);
-	const output = (obj: RpcResponse | RpcExtensionUIRequest | object) => {
-		process.stdout.write(`${JSON.stringify(obj)}\n`);
+	// Frames go to a swappable sink: stdout for stdio, the active client socket for a
+	// persistent --listen (UDS) server. Defaults to stdout, so the stdio path is unchanged.
+	let frameSink = (line: string): void => {
+		process.stdout.write(line);
 	};
+	const output = (obj: RpcResponse | RpcExtensionUIRequest | object) => {
+		frameSink(`${JSON.stringify(obj)}\n`);
+	};
+	// stdio announces readiness immediately; the UDS server announces it per client connection.
+	if (!options?.listen) {
+		output({ type: "ready" });
+	}
 	const emitRpcTitles = shouldEmitRpcTitles();
 	const decodeError = (err: unknown): string => (err instanceof Error ? err.message : String(err));
 
@@ -246,6 +258,7 @@ export async function runRpcMode(
 		if (inFlightCommands.size > 0) {
 			await Promise.race([Promise.allSettled([...inFlightCommands]), Bun.sleep(5000)]);
 		}
+		await unregisterRpcSession(session.sessionId).catch(() => {});
 		hostToolBridge.rejectAllPending(`${reason} before host tool execution completed`);
 		hostUriBridge.clear(`${reason} before host URI request completed`);
 		try {
@@ -561,57 +574,124 @@ export async function runRpcMode(
 		await shutdown(0, "RPC shutdown requested");
 	}
 
-	// Listen for JSONL input using Bun's stdin. Parse frame-by-frame so a malformed
-	// command reports a parse error without poisoning the whole long-lived RPC session.
+	// Parse + route a single inbound JSONL frame. Shared by the stdio reader and the
+	// persistent UDS server so both transports use the same command surface.
 	const inputDecoder = new TextDecoder("utf-8", { fatal: false });
-	for await (const line of readLines(Bun.stdin.stream())) {
-		const text = inputDecoder.decode(line).trim();
-		if (!text) continue;
-
+	async function handleInboundLine(text: string): Promise<void> {
 		let parsed: unknown;
 		try {
 			parsed = JSON.parse(text);
 		} catch (err) {
 			output(error(undefined, "parse", `Failed to parse command: ${decodeError(err)}`));
-			continue;
+			return;
 		}
-
 		try {
-			// Handle extension UI responses
 			if ((parsed as RpcExtensionUIResponse).type === "extension_ui_response") {
 				const response = parsed as RpcExtensionUIResponse;
-				const pending = pendingExtensionRequests.get(response.id);
-				if (pending) {
-					pending.resolve(response);
-				}
-				continue;
+				pendingExtensionRequests.get(response.id)?.resolve(response);
+				return;
 			}
-
 			if (isRpcHostToolResult(parsed)) {
 				hostToolBridge.handleResult(parsed);
-				continue;
+				return;
 			}
-
 			if (isRpcHostToolUpdate(parsed)) {
 				hostToolBridge.handleUpdate(parsed);
-				continue;
+				return;
 			}
-
 			if (isRpcHostUriResult(parsed)) {
 				hostUriBridge.handleResult(parsed);
-				continue;
+				return;
 			}
-
-			// Handle regular commands. Ordered commands run through a serial chain to
-			// preserve causal order; the read loop never blocks, so cancellation commands
-			// stay responsive even while a long command is in flight (issue 13).
+			// Ordered commands run through a serial chain to preserve causal order; the
+			// reader never blocks, so cancellation commands stay responsive even while a
+			// long command is in flight (issue 13).
 			dispatchCommand(parsed as RpcCommand);
-
-			// Check for deferred shutdown request (idle between commands)
 			await checkShutdownRequested();
 		} catch (err) {
 			output(error(undefined, "parse", `Failed to parse command: ${decodeError(err)}`));
 		}
+	}
+
+	// Persistent UDS server (issue 09): keep the AgentSession alive across client
+	// reconnects instead of exiting on stdin EOF. Frames route to the active client
+	// socket; while no client is connected they are dropped (clients resync via
+	// get_state/get_messages on reconnect).
+	if (options?.listen) {
+		const socketPath = options.listen;
+		await fs.mkdir(path.dirname(socketPath), { recursive: true }).catch(() => {});
+		await fs.rm(socketPath, { force: true }).catch(() => {});
+		await registerRpcSession({
+			sessionId: session.sessionId,
+			pid: process.pid,
+			transport: "socket",
+			cwd: session.sessionManager.getCwd(),
+			model: session.model?.id,
+			startedAt: new Date().toISOString(),
+			endpoint: socketPath,
+		}).catch(() => {});
+
+		const noopSink = (_line: string): void => {};
+		let currentSocket: object | undefined;
+		let buf = "";
+		Bun.listen({
+			unix: socketPath,
+			socket: {
+				open(socket) {
+					currentSocket = socket;
+					buf = "";
+					frameSink = (line: string) => {
+						socket.write(line);
+					};
+					output({ type: "ready" });
+				},
+				data(socket, data) {
+					if (socket !== currentSocket) return;
+					buf += inputDecoder.decode(data);
+					while (true) {
+						const nl = buf.indexOf("\n");
+						if (nl < 0) break;
+						const text = buf.slice(0, nl).trim();
+						buf = buf.slice(nl + 1);
+						if (text) void handleInboundLine(text);
+					}
+				},
+				close(socket) {
+					if (socket === currentSocket) {
+						currentSocket = undefined;
+						frameSink = noopSink;
+					}
+				},
+				error() {},
+			},
+		});
+
+		const onSignal = (): void => {
+			void shutdown(0, "RPC socket server signal");
+		};
+		process.on("SIGINT", onSignal);
+		process.on("SIGTERM", onSignal);
+		// Block until an explicit shutdown (signal/extension) calls process.exit.
+		await new Promise<never>(() => {});
+		throw new Error("RPC socket server returned unexpectedly");
+	}
+
+	// Register this stdio RPC session so other processes can discover it (issue 10).
+	await registerRpcSession({
+		sessionId: session.sessionId,
+		pid: process.pid,
+		transport: "stdio",
+		cwd: session.sessionManager.getCwd(),
+		model: session.model?.id,
+		startedAt: new Date().toISOString(),
+	}).catch(() => {});
+
+	// Listen for JSONL input using Bun's stdin. Parse frame-by-frame so a malformed
+	// command reports a parse error without poisoning the whole long-lived RPC session.
+	for await (const line of readLines(Bun.stdin.stream())) {
+		const text = inputDecoder.decode(line).trim();
+		if (!text) continue;
+		await handleInboundLine(text);
 	}
 
 	// stdin closed — RPC client is gone, flush durable state and exit cleanly
