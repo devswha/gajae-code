@@ -479,8 +479,9 @@ pub fn h01_find_best_fuzzy_match(
 	if target_units.last() == Some(&0) {
 		target_units = &target_units[..target_units.len() - 1];
 	}
-	// Defense-in-depth (F19): above the cap, skip the O(content*target) fuzzy search over the whole
-	// file and report no match so a pathological edit input cannot block a native thread.
+	// Defense-in-depth (F19): above the cap, skip the O(content*target) fuzzy
+	// search over the whole file and report no match so a pathological edit input
+	// cannot block a native thread.
 	if content_units.len() > *MAX_FUZZY_UNITS || target_units.len() > *MAX_FUZZY_UNITS {
 		return Ok(H01BestFuzzyMatchResult {
 			best:                  None,

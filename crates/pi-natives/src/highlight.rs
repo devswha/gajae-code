@@ -366,8 +366,8 @@ fn find_syntax<'a>(ss: &'a SyntaxSet, lang: &str) -> Option<&'a SyntaxReference>
 /// fails.
 #[napi]
 pub fn highlight_code(code: String, lang: Option<String>, colors: HighlightColors) -> String {
-	// Defense-in-depth (F19/F3): above the cap, skip the synchronous highlight and return the
-	// original code — the same fallback used when highlighting fails.
+	// Defense-in-depth (F19/F3): above the cap, skip the synchronous highlight and
+	// return the original code — the same fallback used when highlighting fails.
 	if code.len() > *MAX_HIGHLIGHT_BYTES {
 		return code;
 	}

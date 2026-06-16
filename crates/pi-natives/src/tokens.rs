@@ -72,15 +72,16 @@ const fn heuristic_token_count(len: usize) -> u32 {
 /// compatibility alias). Exact for o200k only.
 #[napi]
 pub fn count_tokens(input: Either<String, Vec<String>>, encoding: Option<Encoding>) -> u32 {
-	// Check the byte caps BEFORE initializing the encoder so an oversized input never touches the
-	// synchronous BPE table; the heuristic is computed from the aggregate length to stay panic-free.
+	// Check the byte caps BEFORE initializing the encoder so an oversized input
+	// never touches the synchronous BPE table; the heuristic is computed from the
+	// aggregate length to stay panic-free.
 	match input {
 		Either::A(text) => {
 			if text.len() > *MAX_TOKENIZE_BYTES {
 				return heuristic_token_count(text.len());
 			}
 			encoder(encoding).encode_ordinary(&text).len() as u32
-		}
+		},
 		Either::B(texts) => {
 			let total: usize = texts.iter().map(String::len).sum();
 			if total > *MAX_TOKENIZE_BYTES {
@@ -91,7 +92,7 @@ pub fn count_tokens(input: Either<String, Vec<String>>, encoding: Option<Encodin
 				.par_iter()
 				.map(|s| bpe.encode_ordinary(s).len() as u32)
 				.sum()
-		}
+		},
 	}
 }
 #[cfg(test)]
