@@ -95,6 +95,8 @@ describe("isComposerHarnessModel", () => {
 	it("matches composer ids on any provider, rejects others", () => {
 		expect(isComposerHarnessModel("grok-composer-2.5-fast")).toBe(true);
 		expect(isComposerHarnessModel("composer-1")).toBe(true);
+		expect(isComposerHarnessModel("composer2.5-fast")).toBe(true);
+		expect(isComposerHarnessModel("cursor/composer2.5-fast")).toBe(true);
 		expect(isComposerHarnessModel("Grok-Composer-Next")).toBe(true);
 		expect(isComposerHarnessModel("grok-4.3")).toBe(false);
 		expect(isComposerHarnessModel("gpt-5")).toBe(false);
@@ -102,6 +104,7 @@ describe("isComposerHarnessModel", () => {
 		expect(isComposerHarnessModel("composerish")).toBe(false);
 		expect(isComposerHarnessModel("decomposer-2.5")).toBe(false);
 		expect(isComposerHarnessModel("mycomposer-2.5-fast")).toBe(false);
+		expect(isComposerHarnessModel("mycomposer2.5-fast")).toBe(false);
 	});
 });
 

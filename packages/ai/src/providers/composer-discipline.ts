@@ -23,8 +23,8 @@
  * system prompt on openai-completions, openai-responses, and cursor RPC paths.
  */
 
-/** Matches composer-harness model ids on any provider (xai grok-composer-*, cursor composer-*). */
-const COMPOSER_MODEL_ID_PATTERN = /(?:^|[/:._-])(?:grok-)?composer(?:[/:._-]|$)/i;
+/** Matches composer-harness model ids on any provider (xai grok-composer-*, cursor composer-* / composer2.*). */
+const COMPOSER_MODEL_ID_PATTERN = /(?:^|[/:._-])(?:grok-)?composer(?:[/:._-]|(?=\d)|$)/i;
 
 export function isComposerHarnessModel(modelId: string): boolean {
 	return COMPOSER_MODEL_ID_PATTERN.test(modelId);
