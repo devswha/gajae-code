@@ -54,6 +54,15 @@ mkdir -p "$BINARY_DIR"
 cp packages/coding-agent/dist/gjc "$BINARY_DIR/gjc"
 smoke_cli "$BINARY_DIR/gjc"
 
+section "Bundle (npm bin) smoke"
+# Build and exercise the prebuilt minified JS bundle that npm ships as `bin.gjc`
+# (bun build --minify, not --compile). Proves the bundle resolves the external
+# native addon from node_modules and that the stats/browser/eval workers, which
+# the bundle spawns via `new Worker(new URL("./<name>.ts", import.meta.url))`,
+# are emitted next to dist/cli.js and load successfully.
+bun --cwd=packages/coding-agent run build:npm-bin
+smoke_cli "$ROOT_DIR/packages/coding-agent/dist/cli.js"
+
 section "Source install smoke"
 SOURCE_BUN_HOME="$WORK_DIR/bun-source"
 (
