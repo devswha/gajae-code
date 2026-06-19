@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Reverted the experimental minified npm-bundle distribution introduced in 0.6.2. The published `@gajae-code/coding-agent` shipped both `src/` and ~30MB of `dist/` bundles (`cli.js` plus stats/browser/eval worker bundles), which pushed the package past npm's registry payload limit (`E413 Payload Too Large`) and blocked publishing of `@gajae-code/coding-agent` and the `gajae-code` wrapper (so 0.6.2 only partially published the sibling libraries). The CLI `bin`/`./cli` export ships from `src/` again, matching the layout that published cleanly through 0.6.1; the embedded tiktoken/o200k tokenizer removal is unaffected. Local measurement showed the bundle gave no idle-RAM benefit over running from source.
+- Fixed `edit-mode.ts` importing the full `@gajae-code/utils` barrel (which re-exports native-addon-backed `ptree`/`procmgr`); it now imports `$env` from the `@gajae-code/utils/env` subpath, so schema generation and other lightweight paths no longer eagerly load the native addon.
+
 ## [0.6.2] - 2026-06-19
 
 ### Changed
