@@ -5857,6 +5857,28 @@ export class AgentSession {
 	}
 
 	/**
+	 * The model selector ("provider/id") that resume restores as the session
+	 * default — the latest session-log `model_change` with role="default".
+	 * Model-profile activation snapshots this before mutating the session so a
+	 * failed-activation rollback can restore the pre-activation resume default
+	 * instead of promoting a transient runtime model to the resume default.
+	 */
+	getSessionDefaultModelSelector(): string | undefined {
+		return this.sessionManager.buildSessionContext().models.default;
+	}
+
+	/**
+	 * Re-assert the session resume default ("provider/id") in the session log
+	 * WITHOUT touching the live runtime model. Appends a `model_change` with
+	 * role="default"; never writes to global settings (apply-for-this-session
+	 * semantics). Used by model-profile activation rollback to neutralize the
+	 * profile main model the failed activation already recorded as the default.
+	 */
+	recordResumeDefaultModel(selector: string): void {
+		this.sessionManager.appendModelChange(selector, "default");
+	}
+
+	/**
 	 * Set model temporarily (for this session only).
 	 * Validates API key, saves to session log but NOT to settings.
 	 *
