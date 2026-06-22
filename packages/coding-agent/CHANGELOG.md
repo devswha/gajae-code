@@ -53,6 +53,11 @@
 - Documented lifecycle notification hooks (#903).
 - Added a routed GJC session guide for Clawhip/Hermes/OpenClaw visible routed sessions and linked it from the Hermes docs and operator instructions.
 
+### Fixed
+
+- Fixed combo/cross-provider model presets flipping the main provider on resume. A profile's main model was applied through `setModelTemporary`, which records the session `model_change` with `role: "temporary"`; on resume the session restored `models.default` (the stale pre-profile base model), so an "Apply for this session" combo like `opus-codex` came back on the base default (e.g. `openai-codex/gpt-5.5`) instead of the profile's main model (`anthropic/claude-opus-4-8`). Profile activation now records its main model as the session default (without writing global settings), while transient retry/fallback/context-promotion/plan-mode switches keep `role: "temporary"` so the issue #849 protection is preserved.
+- Hardened the model-profile activation rollback so a failed activation no longer poisons the resume default. The rollback previously restored the pre-activation *live* model as the session default (`role: "default"`); if the user was on a transient retry/fallback/context-promotion/plan switch when activation failed, that transient model was promoted to the resume default and weakened the issue #849 protection. Activation now snapshots the pre-activation resume default separately from the live model and re-asserts it on rollback, while the runtime live model still rolls back as a transient switch (`role: "temporary"`).
+
 ## [0.6.3] - 2026-06-19
 
 ### Fixed

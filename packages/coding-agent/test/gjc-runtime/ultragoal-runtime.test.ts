@@ -902,6 +902,21 @@ describe("native GJC ultragoal runtime", () => {
 		expect(result.stdout).toContain("obligation");
 	});
 
+	it("prints top-level and command-specific help for classify-blocker", async () => {
+		const root = await tempDir();
+
+		const topLevel = await runNativeUltragoalCommand(["--help"], root);
+		const commandSpecific = await runNativeUltragoalCommand(["classify-blocker", "--help"], root);
+
+		expect(topLevel.status).toBe(0);
+		expect(topLevel.stdout).toContain("classify-blocker");
+		expect(topLevel.stdout).toContain("gjc ultragoal classify-blocker --help");
+		expect(commandSpecific.status).toBe(0);
+		expect(commandSpecific.stdout).toContain("--classification <human_blocked|resolvable>");
+		expect(commandSpecific.stdout).toContain("--evidence <text>");
+		expect(commandSpecific.stdout).toContain("--goal-id=<value>");
+	});
+
 	it("prints receipt-only json for steering", async () => {
 		const root = await tempDir();
 		await createUltragoalPlan({ cwd: root, brief: "Ship the fix" });
@@ -2175,6 +2190,46 @@ describe("native GJC ultragoal runtime", () => {
 		const coverageError = await expectRejectedCompleteGate(root, created, notApplicableOnlyProof);
 
 		expect(coverageError).toContain("executorQa.contractCoverage[0].surfaceEvidenceRefs.surface-gui.status");
+	});
+
+	it("does not require computer-use adversarial cases for prompt-only wording changes", async () => {
+		const root = await tempDir();
+		await writeStructuralArtifacts(root);
+
+		await validateExecutorQaRedTeamEvidenceForReview(root, webExecutorQa(), {
+			mode: "review",
+			changeSet: {
+				source: "review-worktree",
+				trusted: true,
+				paths: [
+					{
+						path: "packages/coding-agent/src/defaults/gjc/skills/ultragoal/SKILL.md",
+						status: "modified",
+					},
+				],
+			},
+		});
+	});
+
+	it("requires computer-use adversarial cases for real computer-control surface changes", async () => {
+		const root = await tempDir();
+		await writeStructuralArtifacts(root);
+
+		await expect(
+			validateExecutorQaRedTeamEvidenceForReview(root, webExecutorQa(), {
+				mode: "review",
+				changeSet: {
+					source: "review-worktree",
+					trusted: true,
+					paths: [
+						{
+							path: "packages/coding-agent/src/tools/computer.ts",
+							status: "modified",
+						},
+					],
+				},
+			}),
+		).rejects.toThrow(/kill-switch-bypass/);
 	});
 
 	it("requires a fresh goal get snapshot for complete checkpoints", async () => {

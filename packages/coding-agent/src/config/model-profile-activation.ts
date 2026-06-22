@@ -17,6 +17,8 @@ type ModelProfileActivationSession = Pick<AgentSession, "model" | "thinkingLevel
 	setModelTemporary?: AgentSession["setModelTemporary"];
 	setActiveModelProfile?: (name: string | undefined) => void;
 	getActiveModelProfile?: () => string | undefined;
+	getSessionDefaultModelSelector?: () => string | undefined;
+	recordResumeDefaultModel?: (selector: string) => void;
 };
 
 export interface PrepareModelProfileActivationOptions {
@@ -47,6 +49,14 @@ export interface PreparedModelProfileActivation {
 	defaultThinkingLevel: ThinkingLevel | undefined;
 	agentModelOverrides: Record<string, string>;
 	previousActiveModelProfile: string | undefined;
+	/**
+	 * The session resume default ("provider/id") captured BEFORE activation —
+	 * the model resume would restore prior to this profile. Snapshotted
+	 * separately from `previousModel` (the live runtime model, which may be a
+	 * transient switch) so a failed-activation rollback restores the correct
+	 * resume default without promoting a transient model to it.
+	 */
+	previousSessionDefaultModel: string | undefined;
 }
 
 export function formatModelProfileCredentialError(profileName: string, providers: readonly string[]): string {
@@ -191,6 +201,7 @@ export async function prepareModelProfileActivation(
 		defaultThinkingLevel: resolvedDefault?.thinkingLevel,
 		agentModelOverrides,
 		previousActiveModelProfile: options.session.getActiveModelProfile?.(),
+		previousSessionDefaultModel: options.session.getSessionDefaultModelSelector?.(),
 	};
 }
 
@@ -203,13 +214,16 @@ export async function applyPreparedModelProfileActivation(
 	const previousAgentModelOverrides = prepared.previousAgentModelOverrides;
 	const previousPersistedDefault = prepared.settings.get("modelProfile.default");
 	const previousActiveModelProfile = prepared.previousActiveModelProfile;
+	const previousSessionDefaultModel = prepared.previousSessionDefaultModel;
 	let modelChanged = false;
 	let overridesChanged = false;
 	let defaultChanged = false;
 
 	try {
 		if (prepared.defaultModel) {
-			await prepared.session.setModelTemporary(prepared.defaultModel, prepared.defaultThinkingLevel);
+			await prepared.session.setModelTemporary(prepared.defaultModel, prepared.defaultThinkingLevel, {
+				persistAsSessionDefault: true,
+			});
 			modelChanged = true;
 		}
 		if (Object.keys(prepared.agentModelOverrides).length > 0) {
@@ -233,8 +247,25 @@ export async function applyPreparedModelProfileActivation(
 			prepared.settings.override("task.agentModelOverrides", previousAgentModelOverrides);
 		}
 		prepared.session.setActiveModelProfile?.(previousActiveModelProfile);
-		if (modelChanged && previousModel) {
-			await prepared.session.setModelTemporary(previousModel, previousThinkingLevel);
+		if (modelChanged) {
+			// Runtime rolls back to the pre-activation live model. That model may
+			// itself be a transient retry/fallback/context-promotion/plan switch,
+			// so it is recorded as role:"temporary" (NOT the resume default) to
+			// preserve the issue #849 protection.
+			if (previousModel) {
+				await prepared.session.setModelTemporary(previousModel, previousThinkingLevel);
+			}
+			// The happy path already appended the profile main model as the resume
+			// default (role:"default"). Re-assert the pre-activation resume default
+			// so a failed activation does not poison future resume. Fall back to the
+			// live model only when there was no explicit pre-activation default
+			// (nothing to protect). Append-only — never touches the runtime model.
+			const restoreDefaultSelector =
+				previousSessionDefaultModel ??
+				(previousModel ? `${previousModel.provider}/${previousModel.id}` : undefined);
+			if (restoreDefaultSelector) {
+				prepared.session.recordResumeDefaultModel?.(restoreDefaultSelector);
+			}
 		}
 		throw error;
 	}
