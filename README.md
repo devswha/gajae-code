@@ -75,13 +75,13 @@ Prebuilt standalone release binaries are published only for:
 
 - **Linux** — x64 and arm64
 - **Windows** — x64
-- **macOS** — Apple Silicon (arm64)
+- **macOS** — Apple Silicon (arm64) and Intel (x64)
 
-Other platforms (notably Intel macOS / `darwin-x64`) are not built in release CI; use the npm/Bun package path or build from source.
+The npm/Bun package path and build-from-source also remain available on every platform.
 
 ### macOS Intel install
 
-Standalone release binaries currently target Apple Silicon macOS (`gjc-darwin-arm64`), Linux, and Windows. Intel macOS (`darwin-x64`) is no longer built in release CI because GitHub's Intel macOS runner pool is deprecated and can remain queued for hours. On Intel Macs, install through the npm/Bun package path or build from source:
+Standalone release binaries are published for both Apple Silicon (`gjc-darwin-arm64`) and Intel (`gjc-darwin-x64`) macOS. You can also install through the npm/Bun package path or build from source:
 
 ```sh
 bun install -g gajae-code

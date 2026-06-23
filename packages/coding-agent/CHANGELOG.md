@@ -139,6 +139,7 @@
 - Added an opt-in `gjc rlm` research mode (v1, interactive): a Jupyter-notebook-style research session over the existing agent loop, backed by the shared persistent Python kernel. It loads a distinct research system prompt, restricts the toolset to a hard-gated allowlist (`python` + `read` + `web_search`, asserted after tool-registry assembly — no `bash`/edit/arbitrary mutation), optionally loads a project-root `DATA.md` (overridable via `--data <path>`), aggregates every executed cell live into `.gjc/rlm/<session>/notebook.ipynb` (single-queue atomic temp-rename writes with post-write validation), and synthesizes `.gjc/rlm/<session>/report.md` on session exit. Autonomous goal-arg runs, `--resume`, managed per-workspace venv provisioning, and the optional `>=N` completion gate are deferred follow-ups.
 - Added an experimental opt-in `computer` desktop-control tool surface for local macOS screenshot/input coordination, backed by native `ComputerController`/`computerScreenshot` bindings and gated through settings/tool registration so it can continue stabilizing on `dev` outside the 0.5.4 patch release.
 - Dropped deprecated GitHub Actions Intel macOS (`macos-13` / `darwin-x64`) release-binary coverage after the runner pool repeatedly blocked v0.6.0 publish; Intel macOS users should install through npm/Bun or build from source.
+- Re-enabled GitHub Actions Intel macOS (`darwin-x64`) release-binary coverage using the `macos-15-intel` runner, so standalone `gjc-darwin-x64` binaries ship again alongside Apple Silicon.
 
 ## [0.5.4] - 2026-06-17
 
