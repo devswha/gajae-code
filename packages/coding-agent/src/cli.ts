@@ -22,7 +22,7 @@ process.title = APP_NAME;
 const rootHelpFlags = ["--help", "-h", "help"];
 const versionFlags = ["--version", "-v"];
 
-const commands: CommandEntry[] = [
+export const commands: CommandEntry[] = [
 	{ name: "codex-native-hook", load: () => import("./commands/codex-native-hook").then(m => m.default) },
 	{ name: "state", load: () => import("./commands/state").then(m => m.default) },
 	{ name: "setup", load: () => import("./commands/setup").then(m => m.default) },
@@ -48,6 +48,7 @@ const commands: CommandEntry[] = [
 	{ name: "migrate", load: () => import("./commands/migrate").then(m => m.default) },
 	{ name: "rlm", load: () => import("./commands/rlm").then(m => m.default) },
 	{ name: "update", load: () => import("./commands/update").then(m => m.default) },
+	{ name: "plugin", load: () => import("./commands/plugin").then(m => m.default) },
 	{ name: "launch", load: () => import("./commands/launch").then(m => m.default) },
 ];
 
@@ -220,4 +221,6 @@ export async function runCli(argv: string[]): Promise<void> {
 	return run({ bin: APP_NAME, version: VERSION, argv: runArgv, commands, help: showHelp });
 }
 
-await runCli(process.argv.slice(2));
+if (import.meta.main) {
+	await runCli(process.argv.slice(2));
+}
