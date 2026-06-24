@@ -15,7 +15,7 @@
     },
     "packages/agent": {
       "name": "@gajae-code/agent-core",
-      "version": "0.7.1",
+      "version": "0.7.2",
       "dependencies": {
         "@gajae-code/ai": "catalog:",
         "@gajae-code/natives": "catalog:",
@@ -30,7 +30,7 @@
     },
     "packages/ai": {
       "name": "@gajae-code/ai",
-      "version": "0.7.1",
+      "version": "0.7.2",
       "bin": {
         "pi-ai": "./src/cli.ts",
       },
@@ -48,14 +48,14 @@
     },
     "packages/bridge-client": {
       "name": "@gajae-code/bridge-client",
-      "version": "0.7.1",
+      "version": "0.7.2",
       "devDependencies": {
         "@types/bun": "catalog:",
       },
     },
     "packages/coding-agent": {
       "name": "@gajae-code/coding-agent",
-      "version": "0.7.1",
+      "version": "0.7.2",
       "bin": {
         "gjc": "src/cli.ts",
       },
@@ -90,7 +90,7 @@
     },
     "packages/gajae-code": {
       "name": "gajae-code",
-      "version": "0.7.1",
+      "version": "0.7.2",
       "bin": {
         "gjc": "bin/gjc.js",
       },
@@ -100,7 +100,7 @@
     },
     "packages/natives": {
       "name": "@gajae-code/natives",
-      "version": "0.7.1",
+      "version": "0.7.2",
       "devDependencies": {
         "@napi-rs/cli": "catalog:",
         "@types/bun": "catalog:",
@@ -115,7 +115,7 @@
     },
     "packages/stats": {
       "name": "@gajae-code/stats",
-      "version": "0.7.1",
+      "version": "0.7.2",
       "bin": {
         "gjc-stats": "./src/index.ts",
       },
@@ -140,7 +140,7 @@
     },
     "packages/tui": {
       "name": "@gajae-code/tui",
-      "version": "0.7.1",
+      "version": "0.7.2",
       "dependencies": {
         "@gajae-code/natives": "catalog:",
         "@gajae-code/utils": "catalog:",
@@ -180,7 +180,7 @@
     },
     "packages/utils": {
       "name": "@gajae-code/utils",
-      "version": "0.7.1",
+      "version": "0.7.2",
       "dependencies": {
         "@gajae-code/natives": "catalog:",
         "beautiful-mermaid": "catalog:",
@@ -218,14 +218,14 @@
     "@biomejs/biome": "^2.4.14",
     "@bufbuild/protobuf": "^2.12.0",
     "@bufbuild/protoc-gen-es": "^2.12.0",
-    "@gajae-code/agent-core": "0.7.1",
-    "@gajae-code/ai": "0.7.1",
-    "@gajae-code/bridge-client": "0.7.1",
-    "@gajae-code/coding-agent": "0.7.1",
-    "@gajae-code/natives": "0.7.1",
-    "@gajae-code/stats": "0.7.1",
-    "@gajae-code/tui": "0.7.1",
-    "@gajae-code/utils": "0.7.1",
+    "@gajae-code/agent-core": "0.7.2",
+    "@gajae-code/ai": "0.7.2",
+    "@gajae-code/bridge-client": "0.7.2",
+    "@gajae-code/coding-agent": "0.7.2",
+    "@gajae-code/natives": "0.7.2",
+    "@gajae-code/stats": "0.7.2",
+    "@gajae-code/tui": "0.7.2",
+    "@gajae-code/utils": "0.7.2",
     "@mozilla/readability": "^0.6.0",
     "@napi-rs/cli": "3.6.2",
     "@opentelemetry/api": "^1.9.0",
@@ -1068,7 +1068,7 @@
 
     "mute-stream": ["mute-stream@3.0.0", "", {}, "sha512-dkEJPVvun4FryqBmZ5KhDo0K9iDXAwn08tMLDinNdRBNPcYEDiWYysLcc6k3mjTMlbP9KyylvRpd4wFtwrT9rw=="],
 
-    "nanoid": ["nanoid@3.3.13", "", { "bin": { "nanoid": "bin/nanoid.cjs" } }, "sha512-sPdqC6ByMVVGvF1ynvvMo0/o+oD1VX7DaHhijt1bFgjvBkHBib4t49GoNDhf2NDta4oeUNlaGbSt5K7qjZ955Q=="],
+    "nanoid": ["nanoid@3.3.14", "", { "bin": { "nanoid": "bin/nanoid.cjs" } }, "sha512-U9kYi5bpVMEI31yC8iw4bJJp0avcHXA0W8/wNfLfnvJYzihQo2ZRPYPvpAAd570HAcCBjCTN7vnr+v4StKl1IQ=="],
 
     "neo-async": ["neo-async@2.6.2", "", {}, "sha512-Yd3UES5mWCSqR+qNT93S3UoYUkqAZ9lLg8a7g9rimsWmYGK8cVToA4/sF3RrshdyV3sAGMXVUmpMYOw+dLpOuw=="],
 
@@ -1102,7 +1102,7 @@
 
     "partial-json": ["partial-json@0.1.7", "", {}, "sha512-Njv/59hHaokb/hRUjce3Hdv12wd60MtM9Z5Olmn+nehe0QDAsRtRbJPvJ0Z91TusF0SuZRIvnM+S4l6EIP8leA=="],
 
-    "path-expression-matcher": ["path-expression-matcher@1.5.0", "", {}, "sha512-cbrerZV+6rvdQrrD+iGMcZFEiiSrbv9Tfdkvnusy6y0x0GKBXREFg/Y65GhIfm0tnLntThhzCnfKwp1WRjeCyQ=="],
+    "path-expression-matcher": ["path-expression-matcher@1.6.0", "", {}, "sha512-e5y7RCLHKjemsgQ4eqGJtPyr10ILz25HO7flzxhTV8bgvd5yHx98DGtCAtbVW9f2TqnYI/gEVZd+vz7snrdPTw=="],
 
     "path-is-absolute": ["path-is-absolute@1.0.1", "", {}, "sha512-AVbw3UJ2e9bq64vSaS9Am0fje1Pa8pbGqTTsmXfaIiMpnr5DlDhfJOuLj9Sf95ZPVDAUerDfEk88MPmPe7UCQg=="],
 

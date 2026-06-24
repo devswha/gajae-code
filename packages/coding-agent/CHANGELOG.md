@@ -1,6 +1,8 @@
 # Changelog
 
 ## [Unreleased]
+
+## [0.7.2] - 2026-06-24
 ### Added
 
 - Added a keyless `insane` web search provider that safely ports upstream insane-search public-route fallbacks without TLS impersonation, browser/cookie bypasses, credential storage, or auto-installed dependencies (#1011).
