@@ -17,9 +17,12 @@ import {
 import { sanitizeText } from "@gajae-code/utils";
 import {
 	createHarmonyAuditEvent,
+	detectHarmonyLeakInAssistantMessage,
+	extractHarmonyRemoved,
 	type HarmonyDetection,
 	type HarmonyRecoveredToolCall,
 	isHarmonyLeakMitigationTarget,
+	recoverHarmonyToolCall,
 	signalListLabel,
 } from "./harmony-leak";
 import { type AgentRunCoverage, type AgentRunSummary, ToolCallBlockedError } from "./run-collector";
@@ -502,6 +505,20 @@ async function runLoopBody(
 					streamFn,
 					harmonyRetryAttempt,
 				);
+				// Post-stream harmony-leak detection. The mitigation scaffolding
+				// below (HarmonyLeakInterruption catch + retry/recover/audit,
+				// plus harmonyAbortController) existed but nothing invoked the
+				// detector, so leaks on openai-codex models were never caught.
+				// Detect on the completed message and route recoverable tool-arg
+				// leaks through recovery, everything else through abort-retry.
+				if (isHarmonyLeakMitigationTarget(config.model)) {
+					const detection = detectHarmonyLeakInAssistantMessage(message);
+					if (detection) {
+						const rec = recoverHarmonyToolCall(message, detection);
+						const removed = rec ? rec.removed : extractHarmonyRemoved(message, detection);
+						throw new HarmonyLeakInterruption(detection, removed, rec);
+					}
+				}
 				harmonyRetryAttempt = 0;
 				harmonyTruncateResumeCount = 0;
 			} catch (err) {
@@ -516,6 +533,15 @@ async function runLoopBody(
 					harmonyTruncateResumeCount++;
 					recovered = err.recovered;
 					message = recovered.message;
+					// Replace the contaminated assistant message committed during
+					// streaming with the recovered (truncated) one so the retry
+					// sees clean history.
+					{
+						const idx = currentContext.messages.length - 1;
+						if (idx >= 0 && currentContext.messages[idx]?.role === "assistant") {
+							currentContext.messages[idx] = recovered.message;
+						}
+					}
 					await emitHarmonyAudit(config, err, "truncate_resume", harmonyRetryAttempt);
 				} else {
 					if (harmonyRetryAttempt >= 2) {
@@ -526,6 +552,15 @@ async function runLoopBody(
 					}
 					await emitHarmonyAudit(config, err, "abort_retry", harmonyRetryAttempt);
 					harmonyRetryAttempt++;
+					// Drop the contaminated assistant message committed during
+					// streaming so the retry does not replay the model's own leak
+					// back to it as history.
+					{
+						const idx = currentContext.messages.length - 1;
+						if (idx >= 0 && currentContext.messages[idx]?.role === "assistant") {
+							currentContext.messages.splice(idx, 1);
+						}
+					}
 					continue;
 				}
 			}
