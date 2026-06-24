@@ -95,20 +95,22 @@ describe("citation harvest red-team: OpenAI-compatible chat completions", () => 
 		).rejects.toMatchObject({ provider: "openai-compatible", status: 424 });
 	});
 
-	it("harvests a markdown link from a chat-completions answer", async () => {
-		const result = await openaiSearch(
-			{
-				id: "chat_markdown",
-				choices: [
-					{
-						message: { content: "Latest Bun releases are on [GitHub](https://github.com/oven-sh/bun/releases)." },
-					},
-				],
-			},
-			"openai-completions",
-		);
-
-		expect(result.sources.map(source => source.url)).toEqual(["https://github.com/oven-sh/bun/releases"]);
+	it("does not harvest a markdown link from a chat answer with no search signal (anti-masking)", async () => {
+		await expect(
+			openaiSearch(
+				{
+					id: "chat_markdown",
+					choices: [
+						{
+							message: {
+								content: "Latest Bun releases are on [GitHub](https://github.com/oven-sh/bun/releases).",
+							},
+						},
+					],
+				},
+				"openai-completions",
+			),
+		).rejects.toMatchObject({ provider: "openai-compatible", status: 424 });
 	});
 });
 

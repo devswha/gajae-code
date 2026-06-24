@@ -83,21 +83,24 @@ describe("OpenAI-compatible inline citation harvest (responses)", () => {
 });
 
 describe("OpenAI-compatible inline citation harvest (chat completions)", () => {
-	it("harvests inline sources from a chat-completions search answer without annotations", async () => {
-		const r = await ocSearch(
-			{
-				id: "chat_1",
-				choices: [
-					{
-						message: {
-							content: "Latest stable Bun is v1.3.14. ([releases](https://github.com/oven-sh/bun/releases))",
+	it("fails closed for inline links in a chat answer with no search signal (anti-masking)", async () => {
+		// A chat endpoint that ignored web search returns prose URLs with no
+		// web_search_call / tool_usage; those guessed URLs must NOT be harvested.
+		await expect(
+			ocSearch(
+				{
+					id: "chat_1",
+					choices: [
+						{
+							message: {
+								content: "Latest stable Bun is v1.3.14. ([releases](https://github.com/oven-sh/bun/releases))",
+							},
 						},
-					},
-				],
-			},
-			"openai-completions",
-		);
-		expect(r.sources.map(s => s.url)).toEqual(["https://github.com/oven-sh/bun/releases"]);
+					],
+				},
+				"openai-completions",
+			),
+		).rejects.toMatchObject({ provider: "openai-compatible", status: 424 });
 	});
 
 	it("fails closed (424) for a chat-completions answer with no citations", async () => {
