@@ -207,7 +207,7 @@ describe("native web-search provider resolution", () => {
 				{ provider: "proxy", modelId: "gpt-5", api: "openai-responses", baseUrl: "https://models.example" },
 				{ auth: ["openai-codex", "proxy"] },
 			),
-		).resolves.toEqual(["codex", "duckduckgo"]);
+		).resolves.toEqual(["openai-compatible", "duckduckgo"]);
 		await expect(
 			ids(
 				{ provider: "proxy", modelId: "gpt-5", api: "anthropic-messages", baseUrl: "https://models.example" },
@@ -261,5 +261,21 @@ describe("native web-search provider resolution", () => {
 				{ auth: [] },
 			),
 		).resolves.toEqual(["duckduckgo"]);
+	});
+
+	it("uses openai-compatible (not local-OAuth codex) for a codex/gpt model served through a proxy", async () => {
+		// Regression: a Codex-via-proxy setup must reuse the proxy's own creds, not
+		// the user's local Codex OAuth (which hits chatgpt.com and 429s on its own plan).
+		await expect(
+			ids(
+				{
+					provider: "layofflabs",
+					modelId: "gpt-5.3-codex-spark",
+					api: "openai-completions",
+					baseUrl: "https://api.layofflabs.com/v1",
+				},
+				{ auth: ["openai-codex", "layofflabs"] },
+			),
+		).resolves.toEqual(["openai-compatible", "duckduckgo"]);
 	});
 });

@@ -23,7 +23,15 @@ const openaiCtx = (api: "openai-responses" | "openai-completions"): ActiveSearch
 });
 
 async function ocSearch(json: unknown, api: "openai-responses" | "openai-completions" = "openai-responses") {
-	using _hook = hookFetch(async () => Response.json(json));
+	using _hook = hookFetch(async input => {
+		// Chat-wire contexts exercise the real responses-first control flow: the
+		// mock proxy has no /responses (404), so the adapter falls back to
+		// /chat/completions and parses the supplied chat-shaped payload.
+		if (api === "openai-completions" && String(input).endsWith("/responses")) {
+			return new Response("not found", { status: 404 });
+		}
+		return Response.json(json);
+	});
 	return await new OpenAICompatibleSearchProvider().search({
 		query: "latest stable Bun version",
 		systemPrompt: "Search the web and cite sources.",

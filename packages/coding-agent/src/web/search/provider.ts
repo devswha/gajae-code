@@ -240,14 +240,41 @@ export function isLocalBaseUrl(baseUrl: string | undefined): boolean {
 	return false;
 }
 
+/**
+ * Whether `baseUrl` is an official OpenAI endpoint (or absent, i.e. the default
+ * hosted OpenAI). The dedicated `codex` provider authenticates against the
+ * ChatGPT backend with the user's *local* Codex OAuth, so it must only be
+ * selected when the active model is genuinely served by OpenAI/ChatGPT — never
+ * for a custom/proxy endpoint, which should reuse its own credentials through
+ * the `openai-compatible` adapter instead.
+ */
+function isOpenAIOfficialBaseUrl(baseUrl: string | undefined): boolean {
+	if (!baseUrl?.trim()) return true;
+	let host: string;
+	try {
+		host = new URL(baseUrl).hostname.toLowerCase();
+	} catch {
+		return false;
+	}
+	return (
+		host === "api.openai.com" ||
+		host === "chatgpt.com" ||
+		host.endsWith(".openai.com") ||
+		host.endsWith(".chatgpt.com")
+	);
+}
+
 export function inferNativeProviderFromModel(ctx: ActiveSearchModelContext | undefined): SearchProviderId | undefined {
 	if (!ctx || ctx.webSearch === "off") return undefined;
 	const modelId = (ctx.wireModelId ?? ctx.modelId).toLowerCase();
 	if (modelId.startsWith("claude-") && isAnthropicWire(ctx.api)) return "anthropic";
 	if (modelId.startsWith("gemini-") && isGoogleWire(ctx.api)) return "gemini";
 	if (looksXaiFamilyModelId(ctx) && isOpenAICompatWire(ctx.api)) return "xai";
-	if (looksOpenAIFamilyModelId(ctx) && isOpenAICompatWire(ctx.api)) {
-		if (ctx.webSearch === "on" || !isLocalBaseUrl(ctx.baseUrl)) return "codex";
+	// `codex` hits the ChatGPT backend with local Codex OAuth, so only infer it
+	// for genuine OpenAI endpoints. Custom/proxy OpenAI-compatible models fall
+	// through to `activeContextNativeId` → `openai-compatible` (their own creds).
+	if (looksOpenAIFamilyModelId(ctx) && isOpenAICompatWire(ctx.api) && isOpenAIOfficialBaseUrl(ctx.baseUrl)) {
+		return "codex";
 	}
 	return undefined;
 }
@@ -255,8 +282,9 @@ export function inferNativeProviderFromModel(ctx: ActiveSearchModelContext | und
 function canUseDirectProviderMapping(ctx: ActiveSearchModelContext, id: SearchProviderId): boolean {
 	if (ctx.webSearch === "off") return false;
 	if (id !== "codex") return true;
-	if (!isOpenAICompatWire(ctx.api)) return true;
-	return ctx.webSearch === "on" || !isLocalBaseUrl(ctx.baseUrl);
+	// Same constraint as inference: the ChatGPT-backed codex provider is valid
+	// only for official OpenAI endpoints, not custom/proxy base URLs.
+	return isOpenAIOfficialBaseUrl(ctx.baseUrl);
 }
 
 export async function canUseGenericCredentials(
