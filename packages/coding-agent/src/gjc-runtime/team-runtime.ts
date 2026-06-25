@@ -1845,12 +1845,25 @@ function tagTmuxSessionAsGjcLeader(tmuxCommand: string, sessionName: string): bo
 }
 
 function readCurrentTmuxLeaderContext(tmuxCommand: string, env: NodeJS.ProcessEnv): GjcTmuxLeaderContext {
+	if (Bun.which(tmuxCommand) === null)
+		throw new Error(buildTeamTmuxLeaderRequirementMessage(`tmux_not_installed:${tmuxCommand}`));
 	const paneTarget = env.TMUX_PANE?.trim();
 	const args = paneTarget
 		? ["display-message", "-p", "-t", paneTarget, "#S:#I #{pane_id}"]
 		: ["display-message", "-p", "#S:#I #{pane_id}"];
 	const result = Bun.spawnSync([tmuxCommand, ...args], { stdout: "pipe", stderr: "pipe" });
-	if (result.exitCode !== 0) throw new Error(buildTeamTmuxLeaderRequirementMessage(result.stderr.toString()));
+	if (result.exitCode !== 0) {
+		// Distinguish "you are not inside any tmux session" from a genuine tmux
+		// query failure so the caller gets actionable guidance instead of raw
+		// tmux stderr. `gjc team` needs a tmux leader; outside tmux there is none.
+		const insideTmux = Boolean(env.TMUX?.trim() || env.TMUX_PANE?.trim());
+		const stderr = result.stderr.toString().trim();
+		throw new Error(
+			buildTeamTmuxLeaderRequirementMessage(
+				insideTmux ? `tmux_query_failed${stderr ? `:${stderr}` : ""}` : "not_inside_tmux",
+			),
+		);
+	}
 	const [sessionAndWindow = "", leaderPaneId = ""] = result.stdout.toString().trim().split(/\s+/);
 	const [sessionName = "", windowIndex = ""] = sessionAndWindow.split(":");
 	if (!sessionName || !windowIndex || !leaderPaneId.startsWith("%"))

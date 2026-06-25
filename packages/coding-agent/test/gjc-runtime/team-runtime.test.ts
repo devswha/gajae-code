@@ -668,6 +668,53 @@ describe("native gjc team runtime", () => {
 		).toBe(false);
 	});
 
+	it("fails with friendly guidance when tmux is not installed", async () => {
+		cleanupRoot = await createGitRepo();
+
+		await expect(
+			startGjcTeam({
+				workerCount: 1,
+				agentType: "executor",
+				task: "No tmux here",
+				teamName: "no-tmux-team",
+				cwd: cleanupRoot,
+				env: {
+					GJC_SESSION_ID: TEST_SESSION_ID,
+					PATH: process.env.PATH ?? "",
+					GJC_TEAM_WORKER_COMMAND: "true",
+					GJC_TEAM_TMUX_COMMAND: "gjc-nonexistent-tmux-binary-xyz",
+				},
+			}),
+		).rejects.toThrow(/gjc_team_requires_tmux_leader:.*tmux_not_installed/);
+
+		expect(await Bun.file(path.join(teamStateDir(cleanupRoot, "no-tmux-team"), "phase.json")).exists()).toBe(false);
+	});
+
+	it("fails with not_inside_tmux guidance when run outside any tmux session", async () => {
+		cleanupRoot = await createGitRepo();
+		const fakeTmux = await createFakeTmuxBin(cleanupRoot, { failDisplay: true });
+
+		await expect(
+			startGjcTeam({
+				workerCount: 1,
+				agentType: "executor",
+				task: "Outside tmux",
+				teamName: "outside-tmux-team",
+				cwd: cleanupRoot,
+				env: {
+					GJC_SESSION_ID: TEST_SESSION_ID,
+					PATH: process.env.PATH ?? "",
+					GJC_TEAM_WORKER_COMMAND: "true",
+					GJC_TEAM_TMUX_COMMAND: fakeTmux,
+				},
+			}),
+		).rejects.toThrow(/gjc_team_requires_tmux_leader:.*not_inside_tmux/);
+
+		expect(await Bun.file(path.join(teamStateDir(cleanupRoot, "outside-tmux-team"), "phase.json")).exists()).toBe(
+			false,
+		);
+	});
+
 	it("rejects a tmux provider that cannot persist GJC's ownership tag (e.g. psmux)", async () => {
 		cleanupRoot = await createGitRepo();
 		const fakeTmux = await createFakeTmuxBin(cleanupRoot, { gjcProfile: false, untaggableProfile: true });
