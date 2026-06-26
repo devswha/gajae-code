@@ -775,7 +775,8 @@
 						"auto",
 						"unicode",
 						"square",
-						"ascii"
+						"ascii",
+						"mascot"
 					],
 					"description": "Logo style for the startup welcome screen",
 					"default": "auto"

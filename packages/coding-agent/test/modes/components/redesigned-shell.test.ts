@@ -156,6 +156,23 @@ describe("redesigned interactive shell chrome", () => {
 		}
 	});
 
+	it("renders the Gajae crab mascot welcome banner when requested", () => {
+		const component = new WelcomeComponent("1.2.3", "gpt-5.5", "openai", [], [], "mascot");
+		const lines = component.render(54);
+		const rendered = Bun.stripANSI(lines.join("\n"));
+
+		// Face + legs are identical across the unicode/ascii crab variants.
+		expect(rendered).toContain("(o o)");
+		expect(rendered).toContain("/___/");
+		expect(rendered).toContain("__         __");
+		// The crab replaces the claw logo, not augments it.
+		expect(rendered).not.toContain("╭────────────────╮");
+		expect(rendered).not.toContain("+----------------+");
+		for (const line of lines) {
+			expect(visibleWidth(line)).toBeLessThanOrEqual(54);
+		}
+	});
+
 	it("resolves welcome banner auto and manual override modes", () => {
 		expect(resolveWelcomeLogoMode("auto", { WT_SESSION: "session-id" }, "win32")).toBe("unicode");
 		expect(resolveWelcomeLogoMode("auto", { WT_SESSION: "session-id" }, "linux")).toBe("unicode");
@@ -163,6 +180,8 @@ describe("redesigned interactive shell chrome", () => {
 		expect(resolveWelcomeLogoMode("unicode", { WT_SESSION: "session-id" }, "win32")).toBe("unicode");
 		expect(resolveWelcomeLogoMode("square", { WT_SESSION: "session-id" }, "win32")).toBe("square");
 		expect(resolveWelcomeLogoMode("ascii", {}, "linux")).toBe("ascii");
+		expect(resolveWelcomeLogoMode("mascot", {}, "linux")).toBe("mascot");
+		expect(resolveWelcomeLogoMode("mascot", { WT_SESSION: "session-id" }, "win32")).toBe("mascot");
 	});
 
 	it("renders the live composer as a borderless opencode-style prompt", () => {

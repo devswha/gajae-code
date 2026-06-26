@@ -240,7 +240,7 @@ function parseGoalSubcommand(args: string): { sub: GoalSubcommand | undefined; r
 	return { sub: undefined, rest: trimmed };
 }
 
-export type WelcomeBannerSettingMode = "auto" | "unicode" | "square" | "ascii";
+export type WelcomeBannerSettingMode = "auto" | "unicode" | "square" | "ascii" | "mascot";
 
 export function resolveWelcomeLogoMode(
 	mode: WelcomeBannerSettingMode,
@@ -252,6 +252,7 @@ export function resolveWelcomeLogoMode(
 	if (mode === "unicode") return "unicode";
 	if (mode === "square") return "square";
 	if (mode === "ascii") return "ascii";
+	if (mode === "mascot") return "mascot";
 	return "unicode";
 }
 

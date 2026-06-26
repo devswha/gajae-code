@@ -13,7 +13,7 @@ export interface LspServerInfo {
 	fileTypes: string[];
 }
 
-export type WelcomeLogoMode = "unicode" | "square" | "ascii";
+export type WelcomeLogoMode = "unicode" | "square" | "ascii" | "mascot";
 
 /**
  * GJC-native launch surface with compact command affordances, project
@@ -261,9 +261,9 @@ export class WelcomeComponent implements Component {
 
 	/** Pick the logo frame for the current intro phase, or the resting frame. */
 	#currentLogoFrame(logoLines: readonly string[]): readonly string[] {
-		if (this.#animStart == null) return REST_FRAMES[this.logoMode];
+		if (this.#animStart == null) return this.#restFrame();
 		const elapsed = performance.now() - this.#animStart;
-		if (elapsed >= INTRO_MS) return REST_FRAMES[this.logoMode];
+		if (elapsed >= INTRO_MS) return this.#restFrame();
 		// Ease-out cubic so the spin decelerates into the resting state.
 		const progress = elapsed / INTRO_MS;
 		const eased = 1 - (1 - progress) ** 3;
@@ -278,7 +278,18 @@ export class WelcomeComponent implements Component {
 		return gradientLogo(logoLines, phase, { strength: shineStrength, pos: shinePos });
 	}
 
+	/** Resting (settled) gradient frame for the active logo mode. */
+	#restFrame(): readonly string[] {
+		if (this.logoMode === "mascot") {
+			return theme.getSymbolPreset() === "ascii" ? ASCII_CRAB_REST : RED_CRAB_REST;
+		}
+		return REST_FRAMES[this.logoMode];
+	}
+
 	#logoLines(): readonly string[] {
+		if (this.logoMode === "mascot") {
+			return theme.getSymbolPreset() === "ascii" ? ASCII_CRAB_MASCOT : RED_CRAB_MASCOT;
+		}
 		if (this.logoMode === "ascii") return ASCII_CLAW_LOGO;
 		if (this.logoMode === "square") return SQUARE_CLAW_LOGO;
 		return RED_CLAW_LOGO;
@@ -313,6 +324,26 @@ const ASCII_CLAW_LOGO = [
 	"       +------+    +---+  +--+      ",
 	"+------+      +--+     +--+  +-----+",
 	"+----------------+        +--------+",
+];
+
+// biome-ignore format: preserve crab mascot layout
+const RED_CRAB_MASCOT = [
+	"   __         __   ",
+	"  /  \\  ___  /  \\  ",
+	"  \\   \\(o o)/   /  ",
+	"   \\___\\ ‿ /___/   ",
+	"   /   /   \\   \\   ",
+	"  /___/     \\___\\  ",
+];
+
+// biome-ignore format: preserve crab mascot layout
+const ASCII_CRAB_MASCOT = [
+	"   __         __   ",
+	"  /  \\  ___  /  \\  ",
+	"  \\   \\(o o)/   /  ",
+	"   \\___\\ _ /___/   ",
+	"   /   /   \\   \\   ",
+	"  /___/     \\___\\  ",
 ];
 
 /** Multi-stop palette for the red-claw diagonal gradient. */
@@ -413,9 +444,13 @@ const INTRO_SWEEPS = 2.5;
 /** Number of times the shine highlight crosses the diagonal across the intro. */
 const INTRO_SHINE_TRAVERSALS = 3;
 
-/** Resting gradient frames, cached for re-renders outside of the intro. */
-const REST_FRAMES: Record<WelcomeLogoMode, readonly string[]> = {
+/** Resting gradient frames for the claw logos, cached for re-renders outside of the intro. */
+const REST_FRAMES: Record<"unicode" | "square" | "ascii", readonly string[]> = {
 	unicode: gradientLogo(RED_CLAW_LOGO, 0),
 	square: gradientLogo(SQUARE_CLAW_LOGO, 0),
 	ascii: gradientLogo(ASCII_CLAW_LOGO, 0),
 };
+
+/** Resting crab-mascot frames, selected by the active symbol preset at render time. */
+const RED_CRAB_REST = gradientLogo(RED_CRAB_MASCOT, 0);
+const ASCII_CRAB_REST = gradientLogo(ASCII_CRAB_MASCOT, 0);

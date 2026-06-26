@@ -106,4 +106,4 @@ The startup logo defaults to rounded Unicode box drawing. Windows Terminal can r
 }
 ```
 
-For terminals or fonts with broken rounded corners, set `startup.welcomeBannerMode` in `~/.gjc/agent/config.yml` to one of `unicode`, `square`, or `ascii`. `square` keeps a Unicode-looking logo using square corners (`┌ ┐ └ ┘`) while `ascii` uses only `+`, `-`, and `|`.
+For terminals or fonts with broken rounded corners, set `startup.welcomeBannerMode` in `~/.gjc/agent/config.yml` to one of `unicode`, `square`, or `ascii`. `square` keeps a Unicode-looking logo using square corners (`┌ ┐ └ ┘`) while `ascii` uses only `+`, `-`, and `|`. Set it to `mascot` to swap the claw logo for the Gajae crab mascot on the welcome screen; the crab follows your symbol preset, falling back to an ASCII-safe crab when the preset is `ascii`.

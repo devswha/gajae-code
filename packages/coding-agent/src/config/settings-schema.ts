@@ -1087,7 +1087,7 @@ export const SETTINGS_SCHEMA = {
 
 	"startup.welcomeBannerMode": {
 		type: "enum",
-		values: ["auto", "unicode", "square", "ascii"] as const,
+		values: ["auto", "unicode", "square", "ascii", "mascot"] as const,
 		default: "auto",
 		ui: {
 			tab: "interaction",
@@ -1098,6 +1098,7 @@ export const SETTINGS_SCHEMA = {
 				{ value: "unicode", label: "Unicode", description: "Force the rounded Unicode logo" },
 				{ value: "square", label: "Square Unicode", description: "Force the square-corner Unicode fallback" },
 				{ value: "ascii", label: "ASCII", description: "Force the ASCII-safe logo" },
+				{ value: "mascot", label: "Crab Mascot", description: "Show the Gajae crab mascot instead of the logo" },
 			],
 		},
 	},

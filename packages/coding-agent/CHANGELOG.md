@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added a `mascot` option to `startup.welcomeBannerMode` that replaces the claw logo on the welcome screen with the Gajae crab mascot, reusing the existing red-claw gradient and intro animation and falling back to an ASCII-safe crab when the symbol preset is `ascii`.
+
 ## [0.7.3] - 2026-06-25
 
 ### Added
