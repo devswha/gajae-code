@@ -1,5 +1,6 @@
-import { type Component, padding } from "@gajae-code/tui";
+import { type Component, padding, TERMINAL } from "@gajae-code/tui";
 import { type ThemeColor, theme } from "../theme/theme";
+import { PET_SPRITE_FRAMES, PET_SPRITE_HEIGHT, PET_SPRITE_WIDTH } from "./pet-sprite.generated";
 
 /**
  * Activity states the pet can reflect, mapped from the agent's live state.
@@ -7,15 +8,15 @@ import { type ThemeColor, theme } from "../theme/theme";
  */
 export type PetActivity = "idle" | "working" | "wave" | "error";
 
-/** Two-frame walk cycle per state. Every frame is exactly {@link SPRITE_WIDTH} wide. */
-const FRAMES: Record<PetActivity, readonly [string, string]> = {
+/** Low-fidelity fallback: a two-frame ASCII crab walk per state (width {@link ASCII_WIDTH}). */
+const ASCII_FRAMES: Record<PetActivity, readonly [string, string]> = {
 	idle: ["(\\(oo)/)", "(/(oo)\\)"],
 	working: ["(\\(>o)/)", "(/(o<)\\)"],
 	wave: ["(\\(^^)/)", "\\/(^^)\\/"],
 	error: ["(\\(xx)/)", "(/(xx)\\)"],
 };
+const ASCII_WIDTH = 8;
 
-const SPRITE_WIDTH = 8;
 /** Animation cadence; working scuttles at double the step so it reads as busy. */
 const TICK_MS = 180;
 /** How long the celebratory wave lasts after work finishes. */
@@ -30,9 +31,13 @@ const COLOR_FOR: Record<PetActivity, ThemeColor> = {
 
 /**
  * A small crab companion that scuttles back and forth on its own line and
- * changes animation/color to reflect what the agent is doing. Modeled after the
- * "codex pets" idea: a terminal-native pet that visualizes agent state without
- * touching the welcome banner or stealing input focus.
+ * reflects what the agent is doing. Modeled after the "codex pets" idea: a
+ * terminal-native pet that visualizes agent state without touching the welcome
+ * banner or stealing input focus.
+ *
+ * On truecolor terminals it renders a precise half-block pixel sprite of the
+ * Gajae mascot (two bob frames); elsewhere it falls back to a tiny ASCII crab.
+ * A small colored status pip beside the pet signals the current activity.
  */
 export class PetComponent implements Component {
 	#timer: ReturnType<typeof setInterval> | null = null;
@@ -73,6 +78,14 @@ export class PetComponent implements Component {
 		this.#activity = activity;
 	}
 
+	#usePixelSprite(): boolean {
+		return TERMINAL.trueColor && PET_SPRITE_FRAMES.length > 0;
+	}
+
+	#spriteWidth(): number {
+		return this.#usePixelSprite() ? PET_SPRITE_WIDTH : ASCII_WIDTH;
+	}
+
 	/** Resolve the current frame's state, applying the post-work wave. */
 	#resolveActivity(now: number): PetActivity {
 		const base = this.#getActivity?.() ?? this.#activity;
@@ -101,11 +114,42 @@ export class PetComponent implements Component {
 		this.#requestRender?.();
 	}
 
+	/** Small colored status indicator shown beside the pet (idle shows none). */
+	#statusPip(): string {
+		switch (this.#activity) {
+			case "working":
+				return theme.fg("warning", this.#frame === 0 ? "*" : "+");
+			case "wave":
+				return theme.fg("success", "!");
+			case "error":
+				return theme.fg("error", "x");
+			default:
+				return "";
+		}
+	}
+
 	render(width: number): string[] {
-		const track = Math.max(SPRITE_WIDTH, width);
-		this.#maxX = Math.max(0, track - SPRITE_WIDTH);
+		const spriteWidth = this.#spriteWidth();
+		const track = Math.max(spriteWidth, width);
+		// Reserve two cells for the status pip so it never clips at the right edge.
+		this.#maxX = Math.max(0, track - spriteWidth - 2);
 		if (this.#x > this.#maxX) this.#x = this.#maxX;
-		const sprite = FRAMES[this.#activity][this.#frame];
-		return [padding(this.#x) + theme.fg(COLOR_FOR[this.#activity], sprite)];
+
+		if (this.#usePixelSprite()) return this.#renderPixel();
+		return this.#renderAscii();
+	}
+
+	#renderPixel(): string[] {
+		const frame = PET_SPRITE_FRAMES[this.#frame % PET_SPRITE_FRAMES.length];
+		const pad = padding(this.#x);
+		const pip = this.#statusPip();
+		const pipRow = Math.floor(PET_SPRITE_HEIGHT / 2);
+		return frame.map((row, i) => pad + row + (i === pipRow && pip ? ` ${pip}` : ""));
+	}
+
+	#renderAscii(): string[] {
+		const sprite = ASCII_FRAMES[this.#activity][this.#frame % 2];
+		const pip = this.#statusPip();
+		return [padding(this.#x) + theme.fg(COLOR_FOR[this.#activity], sprite) + (pip ? ` ${pip}` : "")];
 	}
 }

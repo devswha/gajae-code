@@ -195,6 +195,7 @@ export const TERMINAL = (() => {
 
 type MutableTerminalInfo = {
 	imageProtocol: ImageProtocol | null;
+	trueColor: boolean;
 };
 
 /**
@@ -202,6 +203,14 @@ type MutableTerminalInfo = {
  */
 export function setTerminalImageProtocol(imageProtocol: ImageProtocol | null): void {
 	(TERMINAL as unknown as MutableTerminalInfo).imageProtocol = imageProtocol;
+}
+
+/**
+ * Override truecolor support at runtime. Primarily for tests that need to pin
+ * the value independent of the host terminal's environment probes.
+ */
+export function setTerminalTrueColor(trueColor: boolean): void {
+	(TERMINAL as unknown as MutableTerminalInfo).trueColor = trueColor;
 }
 
 export function getTerminalInfo(terminalId: TerminalId): TerminalInfo {

@@ -4,7 +4,7 @@
 
 ### Added
 
-- Added an opt-in animated desk pet (`pet.enabled`): a small crab that scuttles back and forth on its own line in the interactive shell and reflects agent activity — idle, an amber "working" scuttle while the agent is streaming/compacting/running shell or eval, and a brief green wave when work finishes. It renders below the welcome banner without changing the banner, and steals no input focus.
+- Added an opt-in animated desk pet (`pet.enabled`): a crab companion that scuttles back and forth on its own line in the interactive shell and reflects agent activity. On truecolor terminals it renders a precise half-block pixel sprite of the Gajae mascot (two bob frames, embedded as generated art); other terminals get an ASCII-crab fallback. A small colored status pip signals state — busy while the agent is streaming/compacting/running shell or eval, then a brief celebration when work finishes. It renders below the welcome banner without changing the banner and never takes input focus.
 
 ## [0.7.3] - 2026-06-25
 
