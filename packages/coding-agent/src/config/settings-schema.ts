@@ -1102,6 +1102,16 @@ export const SETTINGS_SCHEMA = {
 		},
 	},
 
+	"pet.enabled": {
+		type: "boolean",
+		default: false,
+		ui: {
+			tab: "interaction",
+			label: "Desk Pet",
+			description: "Show an animated crab pet that scuttles along the composer and reacts to agent activity",
+		},
+	},
+
 	"startup.checkUpdate": {
 		type: "boolean",
 		default: true,

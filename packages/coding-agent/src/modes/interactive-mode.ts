@@ -84,6 +84,7 @@ import type { EvalExecutionComponent } from "./components/eval-execution";
 import type { HookEditorComponent } from "./components/hook-editor";
 import type { HookInputComponent } from "./components/hook-input";
 import type { HookSelectorComponent } from "./components/hook-selector";
+import { PetComponent } from "./components/pet";
 import { StatusLineComponent } from "./components/status-line";
 import type { ToolExecutionHandle } from "./components/tool-execution";
 import {
@@ -381,6 +382,7 @@ export class InteractiveMode implements InteractiveModeContext {
 	#eventBus?: EventBus;
 	#eventBusUnsubscribers: Array<() => void> = [];
 	#welcomeComponent?: WelcomeComponent;
+	#pet?: PetComponent;
 
 	constructor(
 		session: AgentSession,
@@ -564,6 +566,20 @@ export class InteractiveMode implements InteractiveModeContext {
 		this.ui.addChild(this.statusContainer);
 		this.ui.addChild(this.todoContainer);
 		this.ui.addChild(this.btwContainer);
+		if (settings.get("pet.enabled")) {
+			this.#pet = new PetComponent();
+			this.ui.addChild(this.#pet);
+			this.#pet.start(
+				() => this.ui.requestRender(),
+				() =>
+					this.session.isStreaming ||
+					this.session.isCompacting ||
+					this.session.isBashRunning ||
+					this.session.isEvalRunning
+						? "working"
+						: "idle",
+			);
+		}
 		this.ui.addChild(this.statusLine); // Main status rail + hook statuses; composer chrome is rendered by the editor.
 		this.ui.addChild(this.hookWidgetContainerAbove);
 		this.ui.addChild(this.editorContainer);
@@ -1959,6 +1975,7 @@ export class InteractiveMode implements InteractiveModeContext {
 			this.loadingAnimation = undefined;
 		}
 		this.#cleanupMicAnimation();
+		this.#pet?.stop();
 		this.#cancelGoalContinuation();
 		if (this.#sttController) {
 			this.#sttController.dispose();

@@ -788,6 +788,17 @@
 			},
 			"additionalProperties": false
 		},
+		"pet": {
+			"type": "object",
+			"properties": {
+				"enabled": {
+					"type": "boolean",
+					"description": "Show an animated crab pet that scuttles along the composer and reacts to agent activity",
+					"default": false
+				}
+			},
+			"additionalProperties": false
+		},
 		"starReminder": {
 			"type": "object",
 			"properties": {

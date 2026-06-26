@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added an opt-in animated desk pet (`pet.enabled`): a small crab that scuttles back and forth on its own line in the interactive shell and reflects agent activity — idle, an amber "working" scuttle while the agent is streaming/compacting/running shell or eval, and a brief green wave when work finishes. It renders below the welcome banner without changing the banner, and steals no input focus.
+
 ## [0.7.3] - 2026-06-25
 
 ### Added
