@@ -5,6 +5,7 @@
 ### Added
 
 - Added an opt-in animated desk pet (`pet.enabled`): a crab companion that scuttles back and forth on its own line in the interactive shell and reflects agent activity. On truecolor terminals it renders a precise half-block pixel sprite of the Gajae mascot (two bob frames, embedded as generated art); other terminals get an ASCII-crab fallback. A small colored status pip signals state — busy while the agent is streaming/compacting/running shell or eval, then a brief celebration when work finishes. It renders below the welcome banner without changing the banner and never takes input focus.
+- Added the Phase-0 Bugwatch SQLite authority schema and transactional migration gate for roots, producer identity, composite log generations, durable coverage, bounded capacity, recovery journals, snapshots, and monitor evidence; it does not start monitoring or enable capture.
 
 ## [0.7.3] - 2026-06-25
 

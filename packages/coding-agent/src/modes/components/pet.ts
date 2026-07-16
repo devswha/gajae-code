@@ -46,11 +46,9 @@ export class PetComponent implements Component {
 
 	#frame = 0;
 	#x = 0;
-	#dir: 1 | -1 = 1;
 	#activity: PetActivity = "idle";
 	#prevWorking = false;
 	#waveUntil = 0;
-	#maxX = 0;
 
 	invalidate(): void {}
 
@@ -101,16 +99,9 @@ export class PetComponent implements Component {
 	#tick(): void {
 		const now = performance.now();
 		this.#activity = this.#resolveActivity(now);
-		this.#frame ^= 1;
-		const step = this.#activity === "working" ? 2 : 1;
-		this.#x += this.#dir * step;
-		if (this.#x >= this.#maxX) {
-			this.#x = this.#maxX;
-			this.#dir = -1;
-		} else if (this.#x <= 0) {
-			this.#x = 0;
-			this.#dir = 1;
-		}
+		// Advance the frame cycle: 12 is divisible by both the 2-frame ASCII walk
+		// and the 4-frame pixel walk, so each render's modulo stays in phase.
+		this.#frame = (this.#frame + 1) % 12;
 		this.#requestRender?.();
 	}
 
@@ -131,9 +122,8 @@ export class PetComponent implements Component {
 	render(width: number): string[] {
 		const spriteWidth = this.#spriteWidth();
 		const track = Math.max(spriteWidth, width);
-		// Reserve two cells for the status pip so it never clips at the right edge.
-		this.#maxX = Math.max(0, track - spriteWidth - 2);
-		if (this.#x > this.#maxX) this.#x = this.#maxX;
+		// Animate in place: keep the pet centered, no horizontal sliding.
+		this.#x = Math.max(0, Math.floor((track - spriteWidth) / 2));
 
 		if (this.#usePixelSprite()) return this.#renderPixel();
 		return this.#renderAscii();

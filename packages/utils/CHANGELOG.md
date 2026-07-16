@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added the dependency-light `bugwatch-contract` subpath with strict canonical schemas, authenticated policy and runtime envelopes, deterministic event identities, bounded fatal records, frozen compatibility fixtures, and fail-closed validation for the hybrid Bugwatch runtime.
+
 ## [0.5.2] - 2026-06-15
 
 ### Fixed

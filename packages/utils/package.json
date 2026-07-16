@@ -51,6 +51,10 @@
 			"types": "./src/index.ts",
 			"import": "./src/index.ts"
 		},
+		"./bugwatch-contract": {
+			"types": "./src/bugwatch-contract/index.ts",
+			"import": "./src/bugwatch-contract/index.ts"
+		},
 		"./*": {
 			"types": "./src/*.ts",
 			"import": "./src/*.ts"
