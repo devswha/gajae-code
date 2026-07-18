@@ -146,6 +146,7 @@ describe("notification orchestration ownership", () => {
 				applicationId: "discord-app",
 				guildId: "discord-guild",
 				parentChannelId: "discord-parent",
+				authorizedUserId: "discord-owner",
 			},
 		});
 		const { writer: settings, commits } = writer({ snapshot: configured });

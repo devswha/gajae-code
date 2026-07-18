@@ -180,8 +180,15 @@ describe("notify Discord and Slack setup", () => {
 				"guild",
 				"--discord-parent-channel-id",
 				"parent",
+				"--discord-authorized-user-id",
+				"owner",
 			]),
-		).toMatchObject({ provider: "discord", discordBotToken: "discord-secret", discordApplicationId: "app" });
+		).toMatchObject({
+			provider: "discord",
+			discordBotToken: "discord-secret",
+			discordApplicationId: "app",
+			discordAuthorizedUserId: "owner",
+		});
 	});
 
 	test("saves complete providers, preserves unrelated settings, rejects partial config, and masks status tokens", async () => {
@@ -196,6 +203,7 @@ describe("notify Discord and Slack setup", () => {
 				discordApplicationId: "app",
 				discordGuildId: "guild",
 				discordParentChannelId: "parent",
+				discordAuthorizedUserId: "owner",
 			},
 			{
 				settings,
@@ -206,8 +214,26 @@ describe("notify Discord and Slack setup", () => {
 			},
 		);
 		expect(settings.get("notifications.discord.botToken")).toBe(discordToken);
+		expect(settings.get("notifications.discord.authorizedUserId")).toBe("owner");
 		expect(settings.get("notifications.enabled")).toBe(true);
 		expect(settings.get("modelProfile.default")).toBe("preserve");
+
+		const incompleteDiscord = Settings.isolated({ "modelProfile.default": "preserve" });
+		await expect(
+			runNotifyCommand(
+				{
+					action: "setup",
+					rawArgs: ["discord"],
+					provider: "discord",
+					discordBotToken: discordToken,
+					discordApplicationId: "app",
+					discordGuildId: "guild",
+					discordParentChannelId: "parent",
+				},
+				{ settings: incompleteDiscord },
+			),
+		).rejects.toThrow("--discord-authorized-user-id is required");
+		expect(incompleteDiscord.get("notifications.discord.botToken")).toBeUndefined();
 
 		const slackBotToken = "xoxb-slack-secret-token";
 		const slackAppToken = "xapp-slack-app-secret-token";

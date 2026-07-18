@@ -84,11 +84,24 @@ describe("notifications daemon config reachability (providers)", () => {
 		const completeDiscord = cfgFromRaw({
 			notifications: {
 				enabled: true,
-				discord: { botToken: "discord-secret", applicationId: "app", guildId: "guild", parentChannelId: "parent" },
+				discord: {
+					botToken: "discord-secret",
+					applicationId: "app",
+					guildId: "guild",
+					parentChannelId: "parent",
+					authorizedUserId: "owner",
+				},
 			},
 		});
 		expect(isDiscordConfigured(completeDiscord)).toBe(true);
 		expect(isGloballyConfigured(completeDiscord)).toBe(true);
+		const missingOwner = cfgFromRaw({
+			notifications: {
+				enabled: true,
+				discord: { botToken: "discord-secret", applicationId: "app", guildId: "guild", parentChannelId: "parent" },
+			},
+		});
+		expect(isDiscordConfigured(missingOwner)).toBe(false);
 		const partialDiscord = cfgFromRaw({ notifications: { enabled: true, discord: { botToken: "discord-secret" } } });
 		expect(isDiscordConfigured(partialDiscord)).toBe(false);
 		expect(isGloballyConfigured(partialDiscord)).toBe(false);

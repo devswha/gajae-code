@@ -306,7 +306,13 @@ describe("chat daemon worker", () => {
 				config: {
 					identity: "fingerprint-only",
 					notifications: {
-						discord: { botToken: "bot-token", applicationId: "app", guildId: "guild", parentChannelId: "parent" },
+						discord: {
+							botToken: "bot-token",
+							applicationId: "app",
+							guildId: "guild",
+							parentChannelId: "parent",
+							authorizedUserId: "human",
+						},
 					},
 				},
 			},
@@ -503,7 +509,13 @@ describe("chat daemon worker", () => {
 				config: {
 					identity: "fingerprint-only",
 					notifications: {
-						discord: { botToken: "bot-token", applicationId: "app", guildId: "guild", parentChannelId: "parent" },
+						discord: {
+							botToken: "bot-token",
+							applicationId: "app",
+							guildId: "guild",
+							parentChannelId: "parent",
+							authorizedUserId: "human",
+						},
 					},
 				},
 			},
@@ -583,7 +595,13 @@ describe("chat daemon worker", () => {
 				config: {
 					identity: "fingerprint-only",
 					notifications: {
-						discord: { botToken: "bot-token", applicationId: "app", guildId: "guild", parentChannelId: "parent" },
+						discord: {
+							botToken: "bot-token",
+							applicationId: "app",
+							guildId: "guild",
+							parentChannelId: "parent",
+							authorizedUserId: "human",
+						},
 					},
 				},
 			},
@@ -1064,6 +1082,7 @@ describe("chat daemon worker", () => {
 								applicationId: "app",
 								guildId: "guild",
 								parentChannelId: "parent",
+								authorizedUserId: "human",
 							},
 						},
 					},

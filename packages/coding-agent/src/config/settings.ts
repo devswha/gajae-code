@@ -483,6 +483,7 @@ export class Settings implements NotificationSettingsReader {
 		const discordApplicationId = this.#getGlobalResolved("notifications.discord.applicationId");
 		const discordGuildId = this.#getGlobalResolved("notifications.discord.guildId");
 		const discordParentChannelId = this.#getGlobalResolved("notifications.discord.parentChannelId");
+		const discordAuthorizedUserId = this.#getGlobalResolved("notifications.discord.authorizedUserId");
 		const slackBotToken = this.#getGlobalResolved("notifications.slack.botToken");
 		const slackAppToken = this.#getGlobalResolved("notifications.slack.appToken");
 		const slackWorkspaceId = this.#getGlobalResolved("notifications.slack.workspaceId");
@@ -537,6 +538,10 @@ export class Settings implements NotificationSettingsReader {
 					typeof discordParentChannelId === "string" && discordParentChannelId.length > 0
 						? discordParentChannelId
 						: getDefault("notifications.discord.parentChannelId"),
+				authorizedUserId:
+					typeof discordAuthorizedUserId === "string" && discordAuthorizedUserId.length > 0
+						? discordAuthorizedUserId
+						: getDefault("notifications.discord.authorizedUserId"),
 			},
 			slack: {
 				botToken:

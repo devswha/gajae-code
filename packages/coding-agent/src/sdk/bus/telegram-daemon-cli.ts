@@ -102,6 +102,7 @@ export function createLightweightDaemonSettings(input: {
 			applicationId: asString(getByPath(rawConfig, ["notifications", "discord", "applicationId"])),
 			guildId: asString(getByPath(rawConfig, ["notifications", "discord", "guildId"])),
 			parentChannelId: asString(getByPath(rawConfig, ["notifications", "discord", "parentChannelId"])),
+			authorizedUserId: asString(getByPath(rawConfig, ["notifications", "discord", "authorizedUserId"])),
 		},
 		slack: {
 			botToken: asString(getByPath(rawConfig, ["notifications", "slack", "botToken"])),
@@ -134,6 +135,8 @@ export function createLightweightDaemonSettings(input: {
 					return snapshot.discord.guildId;
 				case "notifications.discord.parentChannelId":
 					return snapshot.discord.parentChannelId;
+				case "notifications.discord.authorizedUserId":
+					return snapshot.discord.authorizedUserId;
 				case "notifications.slack.botToken":
 					return snapshot.slack.botToken;
 				case "notifications.slack.appToken":

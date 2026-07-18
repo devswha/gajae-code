@@ -75,18 +75,27 @@ async function loadConfig(agentDir: string, kind: ChatDaemonKind): Promise<ChatD
 			applicationId: string;
 			guildId: string;
 			parentChannelId: string;
+			authorizedUserId: string;
 		};
-		const { botToken, applicationId, guildId, parentChannelId } = discord;
+		const { botToken, applicationId, guildId, parentChannelId, authorizedUserId } = discord;
 		const identity = crypto
 			.createHash("sha256")
 			.update(
-				[botToken, applicationId, guildId, parentChannelId, String(config.redact), config.verbosity].join("\0"),
+				[
+					botToken,
+					applicationId,
+					guildId,
+					parentChannelId,
+					authorizedUserId,
+					String(config.redact),
+					config.verbosity,
+				].join("\0"),
 			)
 			.digest("hex")
 			.slice(0, 16);
 		return {
 			identity,
-			notifications: { discord: { botToken, applicationId, guildId, parentChannelId } },
+			notifications: { discord: { botToken, applicationId, guildId, parentChannelId, authorizedUserId } },
 			presentation: { redact: config.redact, verbosity: config.verbosity },
 		};
 	}

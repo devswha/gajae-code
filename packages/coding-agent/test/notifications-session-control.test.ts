@@ -16,6 +16,7 @@ const BASE_CONFIG: NotificationConfig = {
 		applicationId: undefined,
 		guildId: undefined,
 		parentChannelId: undefined,
+		authorizedUserId: undefined,
 	},
 	slack: {
 		botToken: undefined,
@@ -140,6 +141,7 @@ const discordConfig = (): NotificationConfig => ({
 		applicationId: "discord-application",
 		guildId: "discord-guild",
 		parentChannelId: "discord-parent",
+		authorizedUserId: "discord-owner",
 	},
 });
 

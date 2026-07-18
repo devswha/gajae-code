@@ -89,6 +89,7 @@ function identityFor(settings: Settings, kind: ChatDaemonKind): string | undefin
 			cfg.discord.applicationId,
 			cfg.discord.guildId,
 			cfg.discord.parentChannelId,
+			cfg.discord.authorizedUserId,
 			String(cfg.redact),
 			cfg.verbosity,
 		]);

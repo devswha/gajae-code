@@ -301,6 +301,7 @@ export const SETTINGS_SCHEMA = {
 	"notifications.discord.applicationId": { type: "string", default: undefined },
 	"notifications.discord.guildId": { type: "string", default: undefined },
 	"notifications.discord.parentChannelId": { type: "string", default: undefined },
+	"notifications.discord.authorizedUserId": { type: "string", default: undefined },
 	"notifications.slack.botToken": { type: "string", default: undefined },
 	"notifications.slack.appToken": { type: "string", default: undefined },
 	"notifications.slack.workspaceId": { type: "string", default: undefined },
@@ -3575,6 +3576,7 @@ export interface NotificationsSettings {
 		applicationId: string | undefined;
 		guildId: string | undefined;
 		parentChannelId: string | undefined;
+		authorizedUserId: string | undefined;
 	};
 	slack: {
 		botToken: string | undefined;

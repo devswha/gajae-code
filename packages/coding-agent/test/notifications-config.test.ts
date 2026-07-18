@@ -45,6 +45,7 @@ const BASE_CFG: NotificationConfig = {
 		applicationId: undefined,
 		guildId: undefined,
 		parentChannelId: undefined,
+		authorizedUserId: undefined,
 	},
 	slack: {
 		botToken: undefined,
@@ -98,6 +99,7 @@ describe("notifications config", () => {
 			"notifications.discord.applicationId": "discord-app",
 			"notifications.discord.guildId": "discord-guild",
 			"notifications.discord.parentChannelId": "discord-parent",
+			"notifications.discord.authorizedUserId": "discord-owner",
 			"notifications.slack.botToken": "slack-token",
 			"notifications.slack.appToken": "slack-app-token",
 			"notifications.slack.workspaceId": "slack-workspace",
@@ -116,6 +118,7 @@ describe("notifications config", () => {
 				applicationId: "discord-app",
 				guildId: "discord-guild",
 				parentChannelId: "discord-parent",
+				authorizedUserId: "discord-owner",
 			},
 			slack: {
 				botToken: "slack-token",
@@ -178,6 +181,7 @@ describe("notifications config", () => {
 			"notifications.discord.applicationId": "discord-application",
 			"notifications.discord.guildId": "discord-guild",
 			"notifications.discord.parentChannelId": "discord-parent",
+			"notifications.discord.authorizedUserId": "discord-owner",
 			"notifications.slack.botToken": "slack-token",
 			"notifications.slack.appToken": "slack-app-token",
 			"notifications.slack.workspaceId": "slack-workspace",
@@ -206,6 +210,7 @@ describe("notifications config", () => {
 						applicationId: "discord-application",
 						guildId: "discord-guild",
 						parentChannelId: "discord-parent",
+						authorizedUserId: "discord-owner",
 					},
 					slack: {
 						botToken: "slack-token",
@@ -330,6 +335,7 @@ describe("notifications config", () => {
 				applicationId: "discord-application",
 				guildId: "discord-guild",
 				parentChannelId: "discord-parent",
+				authorizedUserId: "discord-owner",
 			},
 		};
 		const slack: NotificationConfig = {
@@ -349,6 +355,7 @@ describe("notifications config", () => {
 		expect(isDiscordConfigured({ ...discord, discord: { ...discord.discord, parentChannelId: undefined } })).toBe(
 			false,
 		);
+		expect(isDiscordConfigured({ ...discord, discord: { ...discord.discord, authorizedUserId: " " } })).toBe(false);
 		expect(isSlackConfigured(slack)).toBe(true);
 		expect(isSlackConfigured({ ...slack, slack: { ...slack.slack, appToken: "\t" } })).toBe(false);
 		expect(isSlackConfigured({ ...slack, slack: { ...slack.slack, workspaceId: undefined } })).toBe(false);
@@ -367,7 +374,13 @@ describe("notifications config", () => {
 			enabled: true,
 			botToken: " ",
 			chatId: "\t",
-			discord: { botToken: "discord-token", applicationId: "app", guildId: "guild", parentChannelId: "parent" },
+			discord: {
+				botToken: "discord-token",
+				applicationId: "app",
+				guildId: "guild",
+				parentChannelId: "parent",
+				authorizedUserId: "owner",
+			},
 		};
 
 		expect(isGloballyConfigured(mixedAdapterCfg)).toBe(true);

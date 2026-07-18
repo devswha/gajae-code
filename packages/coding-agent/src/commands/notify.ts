@@ -33,6 +33,9 @@ export default class Notify extends Command {
 		"discord-parent-channel-id": Flags.string({
 			description: "Discord parent channel id (non-interactive Discord setup)",
 		}),
+		"discord-authorized-user-id": Flags.string({
+			description: "Discord user id authorized for inbound replies and commands",
+		}),
 		"slack-bot-token": Flags.string({ description: "Slack bot token (non-interactive Slack setup)" }),
 		"slack-app-token": Flags.string({ description: "Slack app token (non-interactive Slack setup)" }),
 		"slack-workspace-id": Flags.string({ description: "Slack workspace id (non-interactive Slack setup)" }),
@@ -82,6 +85,7 @@ export default class Notify extends Command {
 			discordApplicationId: flagRec["discord-application-id"] as string | undefined,
 			discordGuildId: flagRec["discord-guild-id"] as string | undefined,
 			discordParentChannelId: flagRec["discord-parent-channel-id"] as string | undefined,
+			discordAuthorizedUserId: flagRec["discord-authorized-user-id"] as string | undefined,
 			slackBotToken: flagRec["slack-bot-token"] as string | undefined,
 			slackAppToken: flagRec["slack-app-token"] as string | undefined,
 			slackWorkspaceId: flagRec["slack-workspace-id"] as string | undefined,

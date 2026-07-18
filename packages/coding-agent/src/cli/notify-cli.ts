@@ -51,6 +51,7 @@ export interface NotifyCommandArgs {
 	discordApplicationId?: string;
 	discordGuildId?: string;
 	discordParentChannelId?: string;
+	discordAuthorizedUserId?: string;
 	slackBotToken?: string;
 	slackAppToken?: string;
 	slackWorkspaceId?: string;
@@ -114,6 +115,9 @@ export function parseNotifyArgs(args: string[]): NotifyCommandArgs | undefined {
 			...(flag("--discord-guild-id") ? { discordGuildId: flag("--discord-guild-id") } : {}),
 			...(flag("--discord-parent-channel-id")
 				? { discordParentChannelId: flag("--discord-parent-channel-id") }
+				: {}),
+			...(flag("--discord-authorized-user-id")
+				? { discordAuthorizedUserId: flag("--discord-authorized-user-id") }
 				: {}),
 			...(flag("--slack-bot-token") ? { slackBotToken: flag("--slack-bot-token") } : {}),
 			...(flag("--slack-app-token") ? { slackAppToken: flag("--slack-app-token") } : {}),
@@ -229,17 +233,19 @@ async function runDiscordSetup(cmd: NotifyCommandArgs, deps: NotifyCommandDeps):
 	const applicationId = requiredSetupValue(cmd.discordApplicationId, "--discord-application-id");
 	const guildId = requiredSetupValue(cmd.discordGuildId, "--discord-guild-id");
 	const parentChannelId = requiredSetupValue(cmd.discordParentChannelId, "--discord-parent-channel-id");
+	const authorizedUserId = requiredSetupValue(cmd.discordAuthorizedUserId, "--discord-authorized-user-id");
 	const settings = await getSettings(deps);
 	settings.set("notifications.discord.botToken", botToken);
 	settings.set("notifications.discord.applicationId", applicationId);
 	settings.set("notifications.discord.guildId", guildId);
 	settings.set("notifications.discord.parentChannelId", parentChannelId);
+	settings.set("notifications.discord.authorizedUserId", authorizedUserId);
 	settings.set("notifications.enabled", true);
 	if (cmd.redact) settings.set("notifications.redact", true);
 	await settings.flushOrThrow();
 	const daemon = await ensureConfiguredProviderDaemon("discord", settings, deps);
 	process.stdout.write(
-		`Discord notifications enabled. botToken=${maskToken(botToken)} applicationId=${applicationId} guildId=${guildId} parentChannelId=${parentChannelId} daemon=${daemon}\n`,
+		`Discord notifications enabled. botToken=${maskToken(botToken)} applicationId=${applicationId} guildId=${guildId} parentChannelId=${parentChannelId} authorizedUserId=${authorizedUserId} daemon=${daemon}\n`,
 	);
 }
 
@@ -566,7 +572,7 @@ ${chalk.bold("Interactive path:")}
 
 ${chalk.bold("Usage:")}
   ${APP_NAME} notify setup [telegram]
-  ${APP_NAME} notify setup discord --discord-bot-token <token> --discord-application-id <id> --discord-guild-id <id> --discord-parent-channel-id <id>
+  ${APP_NAME} notify setup discord --discord-bot-token <token> --discord-application-id <id> --discord-guild-id <id> --discord-parent-channel-id <id> --discord-authorized-user-id <id>
   ${APP_NAME} notify setup slack --slack-bot-token <token> --slack-app-token <token> --slack-workspace-id <id> --slack-channel-id <id> [--slack-authorized-user-id <id>]
   ${APP_NAME} notify status
   ${APP_NAME} notify health [--probe]
@@ -583,7 +589,7 @@ ${chalk.bold("Subcommands:")}
 ${chalk.bold("Examples:")}
   ${APP_NAME} notify setup
   ${APP_NAME} notify setup --token <botToken> --chat-id <chatId> [--redact]
-  ${APP_NAME} notify setup discord --discord-bot-token <token> --discord-application-id <id> --discord-guild-id <id> --discord-parent-channel-id <id>
+  ${APP_NAME} notify setup discord --discord-bot-token <token> --discord-application-id <id> --discord-guild-id <id> --discord-parent-channel-id <id> --discord-authorized-user-id <id>
   ${APP_NAME} notify setup slack --slack-bot-token <token> --slack-app-token <token> --slack-workspace-id <id> --slack-channel-id <id> [--slack-authorized-user-id <id>]
   ${APP_NAME} notify status
   ${APP_NAME} notify health --probe

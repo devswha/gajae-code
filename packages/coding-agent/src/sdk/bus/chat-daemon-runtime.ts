@@ -17,7 +17,13 @@ import { SlackProvider, type SlackProviderClient } from "./slack-provider";
 export interface ChatDaemonRuntimeConfig {
 	identity: string;
 	notifications: {
-		discord?: { botToken: string; applicationId: string; guildId: string; parentChannelId: string };
+		discord?: {
+			botToken: string;
+			applicationId: string;
+			guildId: string;
+			parentChannelId: string;
+			authorizedUserId: string;
+		};
 		slack?: { botToken: string; appToken: string; workspaceId: string; channelId: string; authorizedUserId?: string };
 	};
 	presentation?: { redact: boolean; verbosity: "lean" | "verbose" };
@@ -148,6 +154,7 @@ export class ChatDaemonRuntime {
 				guildId: config.guildId,
 				parentChannelId: config.parentChannelId,
 				provider,
+				authorizeActor: async actorId => config.authorizedUserId === actorId,
 				resolveEndpoint: async sessionId => this.#discordEndpoint(sessionId),
 				onCommand: async (sessionId, content, endpoint, idempotencyKey) => {
 					const attached = this.#sessions.get(sessionId);

@@ -31,6 +31,7 @@ metadata.
 - `--discord-application-id`
 - `--discord-guild-id`
 - `--discord-parent-channel-id`
+- `--discord-authorized-user-id`
 
 It also accepts `--redact`. Supply secret flag values from an approved local
 secret mechanism rather than placing them in shell history, files committed to
@@ -41,6 +42,7 @@ the repository, chat transcripts, or screenshots. The setup command writes:
 - `notifications.discord.applicationId`
 - `notifications.discord.guildId`
 - `notifications.discord.parentChannelId`
+- `notifications.discord.authorizedUserId`
 - `notifications.redact = true` when requested
 
 `gjc notify status` shows configured Discord identifiers and masks token values.
@@ -59,9 +61,13 @@ opaque correlation marker and never contains credentials.
 
 When a session is archived, the daemon archives its thread. On resume it first
 tries to unarchive that thread. If Discord refuses unarchive, the daemon creates
-a replacement thread and marks the old mapping superseded. Inbound events from a
-superseded thread, stale endpoint generation, unknown route, bot author, or
-missing local endpoint fail closed and are not routed to a session.
+a replacement thread and marks the old mapping superseded. Before any route
+lookup, durable claim, interaction callback, SDK delivery, or state
+reconciliation, inbound messages and interactions must match
+`notifications.discord.authorizedUserId`. A non-owner event is ignored with zero
+mutation. Inbound events from a superseded thread, stale endpoint generation,
+unknown route, bot author, or missing local endpoint also fail closed and are
+not routed to a session.
 
 Reply controls carry the session endpoint generation. Discord interaction IDs
 and event IDs are deduplicated locally. A reply is sent to the loopback SDK only;
@@ -88,3 +94,34 @@ unarchive-or-replacement resume, stale/superseded inbound rejection, permission
 and rate-limit failure paths, and disconnect handling. It deliberately does not
 require live Discord credentials, a live guild, or live-provider end-to-end
 tests.
+
+## Build and installation artifact
+
+From a clean checkout of the reviewed revision:
+
+```sh
+bun install --frozen-lockfile
+bun --cwd=packages/natives run build
+bun --cwd=packages/coding-agent run check
+bun --cwd=packages/coding-agent test \
+  test/sdk-discord-daemon.test.ts \
+  test/sdk-chat-daemon-worker.test.ts \
+  test/notifications-config-commands.test.ts \
+  test/notifications-config.test.ts \
+  test/notifications-daemon-config-reachability.test.ts \
+  test/notification-orchestration.test.ts \
+  test/notification-settings-controller.test.ts \
+  test/notifications-session-control.test.ts
+bun --cwd=packages/coding-agent run build
+packages/coding-agent/dist/gjc --version
+sha256sum packages/coding-agent/dist/gjc packages/coding-agent/dist/pi_natives.*.node
+```
+
+The installable artifact set is `packages/coding-agent/dist/gjc` plus every
+`packages/coding-agent/dist/pi_natives.*.node` emitted for the target platform.
+Keep those files together. Installation is an operator action: stop and verify
+the existing managed daemons, back up the current binary/addons, install the
+reviewed artifact set into the selected bin directory, verify the recorded
+hashes and `gjc --version`, then restart only through the approved handoff
+runbook. Building this artifact does not authorize replacing a live install or
+connecting to Discord.

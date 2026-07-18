@@ -70,6 +70,7 @@ export interface NotificationSettingsSnapshot {
 		applicationId?: string;
 		guildId?: string;
 		parentChannelId?: string;
+		authorizedUserId?: string;
 	};
 	slack: {
 		botToken?: string;
@@ -104,6 +105,7 @@ export interface NotificationConfig {
 		applicationId?: string;
 		guildId?: string;
 		parentChannelId?: string;
+		authorizedUserId?: string;
 	};
 	slack: {
 		botToken?: string;
@@ -170,6 +172,7 @@ const notificationConfigSchema = z
 						applicationId: z.string().optional(),
 						guildId: z.string().optional(),
 						parentChannelId: z.string().optional(),
+						authorizedUserId: z.string().optional(),
 					})
 					.passthrough()
 					.optional(),
@@ -224,14 +227,21 @@ export function isTelegramConfigured(
 
 /** Is Discord configured with all credentials and routing identifiers required by its daemon. */
 export function isDiscordConfigured(cfg: NotificationConfig): cfg is NotificationConfig & {
-	discord: { botToken: string; applicationId: string; guildId: string; parentChannelId: string };
+	discord: {
+		botToken: string;
+		applicationId: string;
+		guildId: string;
+		parentChannelId: string;
+		authorizedUserId: string;
+	};
 } {
 	return (
 		cfg.enabled &&
 		hasNonBlankValue(cfg.discord.botToken) &&
 		hasNonBlankValue(cfg.discord.applicationId) &&
 		hasNonBlankValue(cfg.discord.guildId) &&
-		hasNonBlankValue(cfg.discord.parentChannelId)
+		hasNonBlankValue(cfg.discord.parentChannelId) &&
+		hasNonBlankValue(cfg.discord.authorizedUserId)
 	);
 }
 

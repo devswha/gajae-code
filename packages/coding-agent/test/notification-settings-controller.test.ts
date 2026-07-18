@@ -395,6 +395,7 @@ describe("notification settings controller adapter", () => {
 				applicationId: "discord-app",
 				guildId: "discord-guild",
 				parentChannelId: "discord-parent",
+				authorizedUserId: "discord-owner",
 			},
 		});
 		const removed = await operations.removeTelegram();

@@ -89,6 +89,7 @@ export interface DiscordNotificationDaemonOptions {
 	guildId: string;
 	parentChannelId: string;
 	provider: DiscordProvider;
+	authorizeActor: (actorId: string) => boolean | Promise<boolean>;
 	now?: () => number;
 	leaseRecoveryScheduler?: DiscordLeaseRecoveryScheduler;
 	resolveEndpoint: (sessionId: string, expectedGeneration?: number) => Promise<DiscordEndpointBinding | null>;
@@ -112,12 +113,14 @@ export interface DiscordNotificationInput {
 type DiscordInboundEffectPayload =
 	| {
 			type: "command";
+			authorId: string;
 			content: string;
 			idempotencyKey: string;
 			routing: DiscordInboundRouting;
 	  }
 	| {
 			type: "reply";
+			authorId: string;
 			id: string;
 			answer: string | number;
 			idempotencyKey: string;
@@ -435,6 +438,7 @@ export class DiscordNotificationDaemon {
 
 	async handleInbound(event: DiscordInboundEvent): Promise<void> {
 		if (event.bot || event.authorId === this.options.provider.botUserId) return;
+		if (!(await this.#isAuthorizedActor(event.authorId))) return;
 		await this.#reconcileTerminalInboundReceipts();
 		const record = await this.#byThread(event.guildId, event.parentId, event.threadId);
 		if (!record?.sessionId) {
@@ -462,6 +466,15 @@ export class DiscordNotificationDaemon {
 		} finally {
 			this.#inflightInbound.delete(claim.receipt.effectId);
 			await this.#scheduleLeaseRecovery();
+		}
+	}
+
+	async #isAuthorizedActor(authorId: unknown): Promise<boolean> {
+		if (typeof authorId !== "string" || authorId.length === 0) return false;
+		try {
+			return await this.options.authorizeActor(authorId);
+		} catch {
+			return false;
 		}
 	}
 
@@ -499,9 +512,10 @@ export class DiscordNotificationDaemon {
 			...(!command ? { actionId: route!.actionId, actionNonce: route!.actionNonce } : {}),
 		};
 		const payload: DiscordInboundEffectPayload = command
-			? { type: "command", content: event.content!, idempotencyKey, routing }
+			? { type: "command", authorId: event.authorId, content: event.content!, idempotencyKey, routing }
 			: {
 					type: "reply",
+					authorId: event.authorId,
 					id: route!.actionId,
 					answer: componentAnswer(event.interaction!.value ?? ""),
 					idempotencyKey,
@@ -625,6 +639,11 @@ export class DiscordNotificationDaemon {
 		if (!claimedEffect) return;
 		let effect: ChatEffect<DiscordInboundEffectPayload> = claimedEffect;
 		let lease = { owner: this.#dispatchOwner, epoch: effect.epoch };
+
+		if (!(await this.#isAuthorizedActor(effect.payload.authorId))) {
+			await this.#terminalizeInbound(record, receipt, "unauthorized_actor", lease);
+			return;
+		}
 
 		const current = await this.#currentInboundRecord(record, receipt);
 		if (!current) {
